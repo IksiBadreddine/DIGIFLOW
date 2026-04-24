@@ -1,0 +1,103 @@
+[
+  {
+    "id": "cisco-ws-c2960x-24ps-l",
+    "name": "Switch d'accès Indoor 24 ports PoE+",
+    "manufacturer": "Cisco",
+    "reference": "WS-C2960X-24PS-L",
+    "category": "switch_access_indoor",
+    "tags": ["switch", "access", "indoor", "poe+", "24ports", "gigabit", "cisco"],
+    "specs": {
+      "ports_rj45": 24,
+      "speed": "10/100/1000 Mbps",
+      "poe": "PoE+ IEEE 802.3at",
+      "poe_budget_w": 370,
+      "uplinks": "4 x SFP 1G",
+      "switching_bandwidth_gbps": 108,
+      "forwarding_rate_mpps": 71.4,
+      "max_vlans": 1023,
+      "protocols": ["IEEE 802.1D", "IEEE 802.1w", "IEEE 802.1s", "IEEE 802.1Q", "IEEE 802.1p", "IEEE 802.3ad", "IEEE 802.3z", "IEEE 802.3ab", "IEEE 802.3u", "IEEE 802.3"],
+      "security": ["IEEE 802.1X", "MAC filtering", "IP ACL", "Port Security", "DAI", "DHCP Snooping", "TACACS+", "RADIUS", "SSH"],
+      "management": ["SNMP v1/v2c/v3", "Telnet", "SSH", "CLI", "Web UI", "RMON 4 groups"],
+      "multicast": ["IGMP Snooping", "IGMP Filtering", "MVR", "MLD Snooping"],
+      "temp_operating_c": [-5, 45],
+      "humidity_pct": [10, 95],
+      "ios": "LAN Base",
+      "stacking": "FlexStack-Plus (optionnel)",
+      "warranty": "Enhanced Limited Lifetime Warranty"
+    },
+    "datasheet_summary": "Le Cisco Catalyst WS-C2960X-24PS-L est un switch fixe Gigabit Ethernet 24 ports PoE+ (IEEE 802.3at) avec 4 uplinks SFP 1G. Matrice de commutation 108 Gbps, débit 71,4 Mpps. IOS LAN Base avec support VLAN 802.1Q (1023 VLANs actifs), STP/RSTP/MSTP, QoS 802.1p, agrégation LACP/802.3ad. Sécurité complète : 802.1X, ACL, DAI, DHCP Snooping, SSH, SNMP v3, TACACS+. Gestion locale console RJ-45/USB + distante Telnet/SSH. RMON 4 groupes embarqué. Température -5°C à +45°C, humidité 10-95% non condensant."
+  },
+  {
+    "id": "cisco-ws-c2960x-8ps-l",
+    "name": "Switch d'accès Indoor 8 ports PoE+",
+    "manufacturer": "Cisco",
+    "reference": "WS-C2960CX-8PC-L",
+    "category": "switch_access_indoor_8p",
+    "tags": ["switch", "access", "indoor", "poe+", "8ports", "gigabit", "cisco", "compact"],
+    "specs": {
+      "ports_rj45": 8,
+      "speed": "10/100/1000 Mbps",
+      "poe": "PoE+ IEEE 802.3at",
+      "poe_budget_w": 240,
+      "uplinks": "2 x SFP 1G",
+      "switching_bandwidth_gbps": 20,
+      "forwarding_rate_mpps": 14.9,
+      "max_vlans": 1023,
+      "protocols": ["IEEE 802.1D", "IEEE 802.1w", "IEEE 802.1s", "IEEE 802.1Q", "IEEE 802.1p", "IEEE 802.3ad", "IEEE 802.3z", "IEEE 802.3ab", "IEEE 802.3u", "IEEE 802.3"],
+      "security": ["IEEE 802.1X", "MAC filtering", "IP ACL", "Port Security", "DAI", "DHCP Snooping", "SSH"],
+      "management": ["SNMP v1/v2c/v3", "Telnet", "SSH", "CLI", "RMON 4 groups"],
+      "multicast": ["IGMP Snooping", "IGMP Filtering"],
+      "temp_operating_c": [-5, 45],
+      "humidity_pct": [10, 95],
+      "ios": "LAN Base",
+      "warranty": "Enhanced Limited Lifetime Warranty"
+    },
+    "datasheet_summary": "Le Cisco Catalyst WS-C2960CX-8PC-L est un switch compact 8 ports PoE+ Gigabit avec 2 uplinks SFP. Matrice 20 Gbps. Support complet des protocoles IEEE 802.1D/w/s/Q/p/3ad. Sécurité 802.1X, ACL, DAI, DHCP Snooping. SNMP v1/v2c/v3, RMON 4 groupes, Telnet, CLI. Température -5°C à +45°C."
+  },
+  {
+    "id": "cisco-ie-2000-8tc-g",
+    "name": "Switch industriel 8 ports PoE+",
+    "manufacturer": "Cisco",
+    "reference": "IE-2000-8TC-G-E",
+    "category": "switch_industrial",
+    "tags": ["switch", "industrial", "poe+", "8ports", "gigabit", "cisco", "ie2000", "din-rail"],
+    "specs": {
+      "ports_rj45": 8,
+      "speed": "10/100/1000 Mbps",
+      "poe": "PoE+ IEEE 802.3at",
+      "poe_budget_w": 240,
+      "uplinks": "2 x SFP 1G",
+      "switching_bandwidth_gbps": 20,
+      "protocols": ["IEEE 802.1D", "IEEE 802.1w", "IEEE 802.1s", "IEEE 802.1Q", "IEEE 802.1p", "IEEE 802.3ad", "IEEE 802.3z", "IEEE 802.3ab", "IEEE 802.3u", "IEEE 802.3"],
+      "security": ["IEEE 802.1X", "MAC filtering", "IP ACL", "Port Security"],
+      "management": ["SNMP v1/v2c/v3", "Telnet", "SSH", "CLI", "RMON 4 groups"],
+      "multicast": ["IGMP Snooping"],
+      "temp_operating_c": [-20, 75],
+      "humidity_pct": [5, 95],
+      "form_factor": "DIN rail / rack",
+      "ios": "IOS Industrial",
+      "warranty": "Limited Lifetime"
+    },
+    "datasheet_summary": "Le Cisco IE-2000-8TC-G-E est un switch industriel 8 ports PoE+ Gigabit conçu pour environnements difficiles. Température étendue -20°C à +75°C, robustesse industrielle. Support IEEE 802.1D/w/s/Q/p/3ad, 802.1X, ACL. SNMP v3, RMON, CLI. Idéal pour déploiements industriels, SCADA, automatismes."
+  },
+  {
+    "id": "cisco-sfp-lx-10",
+    "name": "Module SFP Fibre Optique 1G LX",
+    "manufacturer": "Cisco",
+    "reference": "GLC-LH-SMD",
+    "category": "sfp_module",
+    "tags": ["sfp", "fibre", "optique", "1g", "lx", "1310nm", "cisco", "transceiver"],
+    "specs": {
+      "type": "SFP mini-GBIC",
+      "format": "Hot-swappable",
+      "wavelength_nm": 1310,
+      "connector": "LC duplex",
+      "speed_gbps": 1,
+      "standard": "1000BASE-LX/LH",
+      "fiber_type": "SMF/MMF",
+      "max_distance_km": 10,
+      "temp_operating_c": [-5, 70]
+    },
+    "datasheet_summary": "Module SFP Cisco GLC-LH-SMD pour fibre optique monomode/multimode. Longueur d'onde 1310 nm, connecteur LC femelle, débit 1 Gbps, distance max 10 km SMF. Échangeable à chaud (hot-swap). Compatible avec tous les switchs Cisco Catalyst 2960X/2960XR."
+  }
+]
