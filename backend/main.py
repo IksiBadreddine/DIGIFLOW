@@ -52,6 +52,8 @@ app.include_router(offer_router)
 def health():
     return {
         "status": "ok",
-        "model": os.getenv("OPENAI_MODEL", "gpt-4o"),
-        "api_key_set": bool(os.getenv("OPENAI_API_KEY")),
+        "llm_provider": os.getenv("LLM_PROVIDER", "ollama"),
+        "llm_model": os.getenv("LLM_MODEL", "qwen2.5:7b"),
+        "embedding_provider": os.getenv("EMBEDDING_PROVIDER", "huggingface"),
+        "embedding_model": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
     }
