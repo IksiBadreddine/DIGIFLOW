@@ -1,0 +1,45 @@
+{
+  "reference_cdc": "CDC-2026-001",
+  "recommandations": [
+    {
+      "exigence_id": "EX-01",
+      "produit": "CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "fabricant": "Cisco",
+      "score": 0.97,
+      "raison": "Switch manageable 24 ports PoE+ : correspond exactement au nombre de ports et au type PoE demandés."
+    },
+    {
+      "exigence_id": "EX-04",
+      "produit": "DS-2CD2143G2-I",
+      "reference": "REF-CAM4MP",
+      "fabricant": "Hikvision",
+      "score": 0.95,
+      "raison": "Caméra IP dôme 4 MP : résolution identique au minimum requis par le client."
+    },
+    {
+      "exigence_id": "EX-06",
+      "produit": "CT-CAT6-305",
+      "reference": "REF-CAT6",
+      "fabricant": "CableTech",
+      "score": 0.93,
+      "raison": "Câble Cat6 U/UTP conforme à la catégorie demandée pour le câblage horizontal."
+    },
+    {
+      "exigence_id": "EX-07",
+      "produit": "NR-22U600",
+      "reference": "REF-BAIE22U",
+      "fabricant": "NetRack",
+      "score": 0.9,
+      "raison": "Baie 19 pouces 22U : capacité supérieure au minimum de 20U requis."
+    },
+    {
+      "exigence_id": "EX-08",
+      "produit": "Smart-UPS SMT1500IC",
+      "reference": "REF-UPS15",
+      "fabricant": "APC",
+      "score": 0.88,
+      "raison": "Onduleur avec autonomie 10 à 15 minutes, conforme au minimum de 10 minutes demandé."
+    }
+  ]
+}

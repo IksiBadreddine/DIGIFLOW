@@ -12,6 +12,8 @@ from .excel_ingestor import ExcelIngestor
 from .image_ingestor import ImageIngestor
 from .datasheet_ingestor import DatasheetIngestor
 from .standards_ingestor import StandardsIngestor
+from .docx_ingestor import DocxIngestor
+from .json_ingestor import JsonIngestor
 
 __all__ = [
     "DocumentType",
@@ -26,4 +28,6 @@ __all__ = [
     "ImageIngestor",
     "DatasheetIngestor",
     "StandardsIngestor",
+    "DocxIngestor",
+    "JsonIngestor",
 ]

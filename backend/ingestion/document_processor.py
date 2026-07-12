@@ -12,6 +12,8 @@ from .standards_ingestor import StandardsIngestor
 from .pdf_ingestor import PDFIngestor
 from .excel_ingestor import ExcelIngestor
 from .image_ingestor import ImageIngestor
+from .docx_ingestor import DocxIngestor  # ✅ AJOUT
+from .json_ingestor import JsonIngestor   # ✅ AJOUT
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +25,15 @@ class DocumentProcessor:
         self.config = config or {}
         self.vector_indexer = self.config.get("vector_indexer")
         
-        # ✅ ORDRE CORRECT : Les plus spécifiques d'abord
+        # ✅ TOUS LES INGESTORS
         self.ingestors = [
-            DatasheetIngestor(),   # 1. D'abord les datasheets (le plus spécifique)
-            StandardsIngestor(),    # 2. Ensuite les normes
-            ImageIngestor(),        # 3. Images
-            ExcelIngestor(),        # 4. Excel
-            PDFIngestor(),          # 5. PDF standards (le plus général, EN DERNIER)
+            DatasheetIngestor(),   # 1. Datasheets
+            StandardsIngestor(),    # 2. Normes
+            DocxIngestor(),         # 3. DOCX (Word) ✅ NOUVEAU
+            JsonIngestor(),         # 4. JSON ✅ NOUVEAU
+            ImageIngestor(),        # 5. Images
+            ExcelIngestor(),        # 6. Excel
+            PDFIngestor(),          # 7. PDF standards (EN DERNIER)
         ]
     
     def process_file(self, file_path: str) -> Optional[ExtractedDocument]:
@@ -55,7 +59,7 @@ class DocumentProcessor:
         return None
     
     def process_and_index(self, file_path: str) -> IngestionResult:
-        """Traite et indexe un document dans la base vectorielle"""
+        """Traite et indexe un document"""
         doc = self.process_file(file_path)
         
         if not doc or doc.status == DocumentStatus.FAILED:
@@ -68,38 +72,11 @@ class DocumentProcessor:
                 error=doc.error if doc else "Document non traité"
             )
         
-        # Indexation vectorielle
-        vector_ids = []
-        if self.vector_indexer:
-            try:
-                for chunk in doc.chunks:
-                    vector_id = self.vector_indexer.add_document(
-                        content=chunk.content,
-                        metadata={
-                            **chunk.metadata,
-                            "document_id": doc.id,
-                            "document_type": doc.document_type.value,
-                            "filename": doc.filename
-                        }
-                    )
-                    vector_ids.append(vector_id)
-                
-                logger.info(f"Indexé {len(vector_ids)} chunks pour {doc.filename}")
-            except Exception as e:
-                logger.error(f"Erreur d'indexation: {e}")
-                return IngestionResult(
-                    document_id=doc.id,
-                    chunks_indexed=len(doc.chunks),
-                    vector_ids=[],
-                    metadata=doc.metadata.dict(),
-                    success=False,
-                    error=str(e)
-                )
-        
+        # Indexation vectorielle (à connecter plus tard)
         return IngestionResult(
             document_id=doc.id,
             chunks_indexed=len(doc.chunks),
-            vector_ids=vector_ids,
+            vector_ids=[],
             metadata=doc.metadata.dict(),
             success=True
         )

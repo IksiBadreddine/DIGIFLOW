@@ -1,0 +1,36 @@
+{
+  "document_source": "01_cahier_des_charges_client.pdf",
+  "reference_cdc": "CDC-2026-001",
+  "summary": "Le client TechNova souhaite installer un petit réseau d'entreprise sur son site de Casablanca, incluant un switch manageable PoE, 4 caméras IP, un câblage Cat6, une baie de brassage et un onduleur, avec supervision SNMP et VLAN.",
+  "requirements": [
+    {"id": "EX-01", "text": "Switch manageable, minimum 24 ports, PoE+.", "category": "réseau"},
+    {"id": "EX-02", "text": "Support des VLAN (802.1Q).", "category": "réseau"},
+    {"id": "EX-03", "text": "Supervision SNMP (v2c ou v3).", "category": "supervision"},
+    {"id": "EX-04", "text": "4 caméras IP dôme, résolution minimum 4 MP.", "category": "vidéosurveillance"},
+    {"id": "EX-05", "text": "Alimentation des caméras en PoE.", "category": "vidéosurveillance"},
+    {"id": "EX-06", "text": "Câblage horizontal Cat6 U/UTP, 90 m max.", "category": "câblage"},
+    {"id": "EX-07", "text": "Baie de brassage 19 pouces, minimum 20U.", "category": "infrastructure"},
+    {"id": "EX-08", "text": "Onduleur, autonomie minimum 10 minutes.", "category": "infrastructure"},
+    {"id": "EX-09", "text": "Connectique RJ45 Cat6 certifiée.", "category": "câblage"},
+    {"id": "EX-10", "text": "Documentation technique en français.", "category": "documentation"}
+  ],
+  "constraints": [
+    "Résolution caméra minimale : 4 MP",
+    "Nombre de ports switch minimal : 24",
+    "Catégorie de câblage : Cat6",
+    "Autonomie onduleur minimale : 10 minutes",
+    "Capacité baie minimale : 20U"
+  ],
+  "keywords": [
+    "switch manageable",
+    "PoE",
+    "VLAN",
+    "SNMP",
+    "caméra IP",
+    "Cat6",
+    "baie 19 pouces",
+    "onduleur",
+    "vidéosurveillance",
+    "câblage structuré"
+  ]
+}
