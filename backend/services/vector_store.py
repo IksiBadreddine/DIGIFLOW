@@ -1,158 +1,205 @@
 """
-Vector Store Service
-
-Local Vector Store using ChromaDB + HuggingFace Embeddings.
+Service d'indexation vectorielle avec ChromaDB
+Support Hugging Face pour les embeddings
 """
 
 import os
-from functools import lru_cache
+import logging
+import uuid
+from typing import List, Dict, Any, Optional
 
-from langchain_chroma import Chroma
-from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+import chromadb
+from chromadb.config import Settings
 
-
-PRODUCTS_COLLECTION = "products_kb"
-CDC_COLLECTION = "cdc_documents"
-
-
-# ============================================================
-# Embeddings
-# ============================================================
-
-@lru_cache(maxsize=1)
-def get_embeddings():
-    """
-    Returns the configured embedding model.
-
-    Uses cache to avoid reloading the model multiple times.
-    """
-
-    provider = os.getenv("EMBEDDING_PROVIDER", "huggingface").lower()
-
-    if provider != "huggingface":
-        raise ValueError(f"Unsupported embedding provider: {provider}")
-
-    return HuggingFaceEmbeddings(
-        model_name=os.getenv(
-            "EMBEDDING_MODEL",
-            "BAAI/bge-m3"
-        ),
-        model_kwargs={
-            "device": "cpu"
-        },
-        encode_kwargs={
-            "normalize_embeddings": True
-        },
-    )
+logger = logging.getLogger(__name__)
 
 
-# ============================================================
-# Stores
-# ============================================================
-
-def get_product_store(persist_dir: str) -> Chroma:
-    return Chroma(
-        collection_name=PRODUCTS_COLLECTION,
-        embedding_function=get_embeddings(),
-        persist_directory=persist_dir,
-    )
-
-
-def get_cdc_store(persist_dir: str) -> Chroma:
-    return Chroma(
-        collection_name=CDC_COLLECTION,
-        embedding_function=get_embeddings(),
-        persist_directory=persist_dir,
-    )
-
-
-# ============================================================
-# Indexation
-# ============================================================
-
-def index_products(
-    docs: list[Document],
-    persist_dir: str,
-) -> Chroma:
-    """
-    Rebuilds the product knowledge base.
-    """
-
-    store = Chroma(
-        collection_name=PRODUCTS_COLLECTION,
-        embedding_function=get_embeddings(),
-        persist_directory=persist_dir,
-    )
-
-    try:
-        store.delete_collection()
-    except Exception:
-        pass
-
-    return Chroma.from_documents(
-        documents=docs,
-        embedding=get_embeddings(),
-        collection_name=PRODUCTS_COLLECTION,
-        persist_directory=persist_dir,
-    )
-
-
-def index_cdc(
-    docs: list[Document],
-    persist_dir: str,
-    session_id: str,
-) -> Chroma:
-    """
-    Indexes a customer specification document.
-    """
-
-    return Chroma.from_documents(
-        documents=docs,
-        embedding=get_embeddings(),
-        collection_name=f"cdc_{session_id}",
-        persist_directory=persist_dir,
-    )
+class HuggingFaceEmbeddingFunction:
+    """Fonction d'embedding compatible avec ChromaDB"""
+    
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+        self._model = None
+        self._load_model()
+    
+    def _load_model(self):
+        """Charge le modèle SentenceTransformer"""
+        try:
+            from sentence_transformers import SentenceTransformer
+            logger.info(f"🔄 Chargement du modèle: {self.model_name}")
+            self._model = SentenceTransformer(self.model_name)
+            logger.info(f"✅ Modèle chargé sur: {self._model.device}")
+        except ImportError:
+            logger.error("sentence-transformers non installé")
+            raise
+    
+    def name(self) -> str:
+        """Retourne le nom du modèle pour ChromaDB"""
+        return self.model_name
+    
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        """
+        Calcule les embeddings pour une liste de textes.
+        Signature attendue par ChromaDB pour l'indexation.
+        """
+        if isinstance(input, str):
+            input = [input]
+        
+        if not input:
+            return []
+        
+        # Générer les embeddings
+        embeddings = self._model.encode(input)
+        
+        # Convertir en liste de listes de float
+        if hasattr(embeddings, 'tolist'):
+            return embeddings.tolist()
+        return embeddings
+    
+    def embed_query(self, input: str) -> List[float]:
+        """
+        Calcule l'embedding pour une requête unique.
+        ✅ Signature CORRECTE : 'input' et non 'text'
+        """
+        if not input:
+            return []
+        
+        embedding = self._model.encode(input)
+        if hasattr(embedding, 'tolist'):
+            return embedding.tolist()
+        return embedding
 
 
-# ============================================================
-# Search
-# ============================================================
-
-def search_products(
-    query: str,
-    persist_dir: str,
-    k: int = 4,
-) -> list[Document]:
-    """
-    Product similarity search.
-    """
-
-    store = get_product_store(persist_dir)
-
-    return store.similarity_search(
-        query,
-        k=k,
-    )
-
-
-def search_cdc(
-    query: str,
-    persist_dir: str,
-    session_id: str,
-    k: int = 6,
-) -> list[Document]:
-    """
-    Similarity search inside one uploaded specification.
-    """
-
-    store = Chroma(
-        collection_name=f"cdc_{session_id}",
-        embedding_function=get_embeddings(),
-        persist_directory=persist_dir,
-    )
-
-    return store.similarity_search(
-        query,
-        k=k,
-    )
+class VectorStore:
+    """Service d'indexation vectorielle avec ChromaDB"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        
+        # Configuration ChromaDB
+        self.persist_dir = self.config.get(
+            "persist_dir",
+            os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
+        )
+        
+        # Configuration des embeddings
+        self.embedding_provider = os.getenv("EMBEDDING_PROVIDER", "huggingface")
+        self.embedding_model = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+        
+        logger.info(f"📚 Provider embeddings: {self.embedding_provider}")
+        logger.info(f"📚 Modèle embeddings: {self.embedding_model}")
+        
+        # Créer la fonction d'embedding
+        self.embedding_fn = HuggingFaceEmbeddingFunction(self.embedding_model)
+        
+        # Initialiser le client ChromaDB
+        self.client = chromadb.PersistentClient(
+            path=self.persist_dir,
+            settings=Settings(anonymized_telemetry=False)
+        )
+        
+        logger.info(f"✅ ChromaDB initialisé: {self.persist_dir}")
+    
+    def get_or_create_collection(self, collection_name: str):
+        """Récupère ou crée une collection"""
+        try:
+            return self.client.get_collection(
+                name=collection_name,
+                embedding_function=self.embedding_fn
+            )
+        except:
+            return self.client.create_collection(
+                name=collection_name,
+                embedding_function=self.embedding_fn,
+                metadata={"hnsw:space": "cosine"}
+            )
+    
+    def add_document(self, content: str, metadata: Dict[str, Any], collection: str = "knowledge_base") -> str:
+        """Ajoute un document à la collection vectorielle"""
+        
+        collection_obj = self.get_or_create_collection(collection)
+        
+        doc_id = f"doc_{uuid.uuid4().hex[:12]}"
+        
+        try:
+            collection_obj.add(
+                documents=[content],
+                metadatas=[metadata],
+                ids=[doc_id]
+            )
+            logger.debug(f"✅ Document ajouté: {doc_id}")
+            return doc_id
+        except Exception as e:
+            logger.error(f"❌ Erreur d'ajout: {e}")
+            raise
+    
+    def add_documents(self, contents: List[str], metadatas: List[Dict], collection: str = "knowledge_base") -> List[str]:
+        """Ajoute plusieurs documents à la collection"""
+        
+        collection_obj = self.get_or_create_collection(collection)
+        
+        doc_ids = [f"doc_{uuid.uuid4().hex[:12]}" for _ in contents]
+        
+        try:
+            collection_obj.add(
+                documents=contents,
+                metadatas=metadatas,
+                ids=doc_ids
+            )
+            logger.info(f"✅ {len(doc_ids)} documents ajoutés")
+            return doc_ids
+        except Exception as e:
+            logger.error(f"❌ Erreur d'ajout batch: {e}")
+            raise
+    
+    def search(self, query: str, collection: str = "knowledge_base", n_results: int = 5) -> List[Dict]:
+        """Recherche des documents par similarité sémantique"""
+        
+        collection_obj = self.get_or_create_collection(collection)
+        
+        try:
+            results = collection_obj.query(
+                query_texts=[query],
+                n_results=n_results
+            )
+            
+            # Formater les résultats
+            documents = []
+            if results['documents']:
+                for i, doc in enumerate(results['documents'][0]):
+                    documents.append({
+                        "content": doc,
+                        "metadata": results['metadatas'][0][i] if results['metadatas'] else {},
+                        "distance": results['distances'][0][i] if results['distances'] else None,
+                        "id": results['ids'][0][i] if results['ids'] else None
+                    })
+            
+            return documents
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur de recherche: {e}")
+            return []
+    
+    def delete_collection(self, collection_name: str):
+        """Supprime une collection"""
+        try:
+            self.client.delete_collection(collection_name)
+            logger.info(f"✅ Collection supprimée: {collection_name}")
+        except Exception as e:
+            logger.warning(f"⚠️ Collection non trouvée: {e}")
+    
+    def get_collection_info(self, collection_name: str) -> Dict:
+        """Retourne des informations sur une collection"""
+        try:
+            collection = self.client.get_collection(collection_name)
+            return {
+                "name": collection.name,
+                "count": collection.count(),
+                "metadata": collection.metadata
+            }
+        except:
+            return {"name": collection_name, "count": 0, "metadata": {}}
+    
+    def list_collections(self) -> List[str]:
+        """Liste toutes les collections"""
+        return [col.name for col in self.client.list_collections()]

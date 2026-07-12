@@ -1,7 +1,8 @@
-# backend/routers/analyze.py
+"""
+Routeur pour l'analyse de documents - Version avec ingestion
+"""
 
 import os
-import shutil
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
@@ -29,15 +30,15 @@ async def analyze_document(file: UploadFile = File(...)):
     upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
     os.makedirs(upload_dir, exist_ok=True)
     
-    file_path = os.path.join(upload_dir, f"{file.filename}")
+    file_path = os.path.join(upload_dir, file.filename)
     
     try:
-        # Sauvegarder
+        # Sauvegarder le fichier
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
         
-        # 2. ✅ UTILISER LE MODULE D'INGESTION
+        # 2. Utiliser le module d'ingestion
         processor = DocumentProcessor()
         doc = processor.process_file(file_path)
         
@@ -60,17 +61,21 @@ async def analyze_document(file: UploadFile = File(...)):
         
         # Indexer les chunks du document
         for chunk in doc.chunks:
-            vector_store.add_document(
-                content=chunk.content,
-                metadata={
-                    "document_id": doc.id,
-                    "document_type": doc.document_type.value,
-                    "filename": doc.filename,
-                    "chunk_index": chunk.metadata.get("chunk_index", 0),
-                    "session_id": session_id
-                },
-                collection=f"cdc_{session_id}"
-            )
+            try:
+                vector_store.add_document(
+                    content=chunk.content,
+                    metadata={
+                        "document_id": doc.id,
+                        "document_type": doc.document_type.value,
+                        "filename": doc.filename,
+                        "chunk_index": chunk.metadata.get("chunk_index", 0),
+                        "session_id": session_id,
+                        "source": "upload"
+                    },
+                    collection=f"cdc_{session_id}"
+                )
+            except Exception as e:
+                logger.warning(f"Erreur d'indexation d'un chunk: {e}")
         
         logger.info(f"✅ Document indexé dans ChromaDB")
         
@@ -88,6 +93,8 @@ async def analyze_document(file: UploadFile = File(...)):
             }
         })
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -95,7 +102,66 @@ async def analyze_document(file: UploadFile = File(...)):
     finally:
         # Nettoyer le fichier temporaire
         if os.path.exists(file_path):
-            os.unlink(file_path)
+            try:
+                os.unlink(file_path)
+            except Exception as e:
+                logger.warning(f"Erreur de nettoyage: {e}")
+
+@router.get("/api/search")
+async def search_knowledge(
+    q: str,
+    limit: int = 5,
+    collection: str = "knowledge_base"
+):
+    """
+    Recherche dans la base de connaissances
+    """
+    logger.info(f"🔍 Recherche: {q}")
+    
+    vector_store = VectorStore()
+    results = vector_store.search(q, collection=collection, n_results=limit)
+    
+    if not results:
+        return JSONResponse({
+            "query": q,
+            "results": [],
+            "count": 0
+        })
+    
+    # Formater les résultats
+    formatted_results = []
+    for result in results:
+        formatted_results.append({
+            "content": result.get("content", ""),
+            "score": 1 - result.get("distance", 1) if result.get("distance") else 0,
+            "metadata": result.get("metadata", {})
+        })
+    
+    return JSONResponse({
+        "query": q,
+        "results": formatted_results,
+        "count": len(formatted_results)
+    })
+
+
+@router.get("/api/collections")
+async def list_collections():
+    """
+    Liste toutes les collections ChromaDB
+    """
+    vector_store = VectorStore()
+    collections = vector_store.list_collections()
+    
+    # Récupérer les infos de chaque collection
+    result = []
+    for name in collections:
+        info = vector_store.get_collection_info(name)
+        result.append(info)
+    
+    return JSONResponse({
+        "collections": result,
+        "count": len(result)
+    })
 
 
 @router.post("/api/analyze/batch")
@@ -103,14 +169,16 @@ async def analyze_batch(files: list[UploadFile] = File(...)):
     """
     Analyse plusieurs documents en batch
     """
+    logger.info(f"📄 Analyse batch de {len(files)} fichiers")
+    
     results = []
     processor = DocumentProcessor()
+    upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
+    os.makedirs(upload_dir, exist_ok=True)
     
     for file in files:
         try:
             # Sauvegarder
-            upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
-            os.makedirs(upload_dir, exist_ok=True)
             file_path = os.path.join(upload_dir, file.filename)
             
             with open(file_path, "wb") as f:
@@ -150,3 +218,34 @@ async def analyze_batch(files: list[UploadFile] = File(...)):
         "total": len(files),
         "results": results
     })
+
+@router.get("/api/products")
+async def get_products():
+    """
+    Récupère le catalogue produits
+    """
+    import json
+    catalog_path = os.getenv("CATALOG_PATH", "data/products/catalog.json")
+    
+    if not os.path.exists(catalog_path):
+        return JSONResponse({
+            "products": [],
+            "count": 0,
+            "error": "Catalogue non trouvé"
+        })
+    
+    try:
+        with open(catalog_path, 'r', encoding='utf-8') as f:
+            catalog = json.load(f)
+            products = catalog.get("products", [])
+            return JSONResponse({
+                "products": products,
+                "count": len(products),
+                "success": True
+            })
+    except Exception as e:
+        return JSONResponse({
+            "products": [],
+            "count": 0,
+            "error": str(e)
+        })

@@ -14,6 +14,7 @@ const s = {
     background: 'linear-gradient(135deg, #1a365d, #2b6cb0)',
     borderRadius: 12, padding: '24px 28px', color: '#fff', marginBottom: 20,
     display: 'flex', alignItems: 'center', gap: 20,
+    flexWrap: 'wrap',
   },
   offerTitle: { fontSize: 20, fontWeight: 800, marginBottom: 4 },
   offerRef: { fontSize: 14, opacity: .8 },
@@ -37,6 +38,7 @@ const s = {
   tabs: {
     display: 'flex', gap: 4, marginBottom: 20,
     borderBottom: '2px solid #e2e8f0',
+    flexWrap: 'wrap',
   },
   tab: (active) => ({
     padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer',
@@ -85,11 +87,36 @@ function SectionCard({ section }) {
 
 export default function OfferPanel({ offer, sessionId }) {
   const [tab, setTab] = useState('sections')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(null)
+  
   if (!offer) return null
 
   const conformes = (offer.compliance_table || []).filter(r => r.status === 'CONFORME').length
   const total = offer.compliance_table?.length || 0
   const pct = Math.round(offer.total_compliance_rate * 100)
+
+  // ✅ Fonction d'export corrigée
+// OfferPanel.jsx - Fonction handleExport corrigée
+
+  const handleExport = async () => {
+    setExporting(true)
+    setExportError(null)
+    
+    try {
+      // ✅ Construire l'URL d'export
+      const url = `/api/export/${sessionId}`
+      
+      // ✅ Ouvrir dans un nouvel onglet (méthode la plus fiable)
+      window.open(url, '_blank')
+      
+    } catch (err) {
+      console.error('Erreur d\'export:', err)
+      setExportError(err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div>
@@ -102,16 +129,37 @@ export default function OfferPanel({ offer, sessionId }) {
           <div style={s.offerTitle}>{offer.title}</div>
           <div style={s.offerRef}>{offer.reference} — {conformes}/{total} exigences conformes</div>
         </div>
-        <a href={exportDocxUrl(sessionId)} download>
-          <button style={s.exportBtn}>
-            <FileDown size={16} /> Exporter DOCX
-          </button>
-        </a>
+        <button 
+          style={{
+            ...s.exportBtn,
+            opacity: exporting ? 0.6 : 1,
+            cursor: exporting ? 'wait' : 'pointer',
+          }}
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          <FileDown size={16} /> 
+          {exporting ? 'Export en cours...' : 'Exporter DOCX'}
+        </button>
       </div>
+
+      {exportError && (
+        <div style={{
+          background: '#fff5f5',
+          border: '1px solid #fc8181',
+          color: '#c53030',
+          padding: '12px 16px',
+          borderRadius: 8,
+          marginBottom: 16,
+          fontSize: 14,
+        }}>
+          ❌ {exportError}
+        </div>
+      )}
 
       <div style={s.tabs}>
         {[
-          { key: 'sections', label: '📄 Offre Technique', icon: BookOpen },
+          { key: 'sections', label: '📄 Offre Technique' },
           { key: 'boq', label: '📦 BOQ' },
           { key: 'compliance', label: '✅ Tableau Conformité' },
         ].map(t => (

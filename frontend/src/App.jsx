@@ -272,11 +272,12 @@ export default function App() {
 
         {/* STEP 2 — Products */}
         {step === 2 && analysis && (
-          <ProductsPanel
-            analysis={analysis}
-            onGenerate={handleGenerate}
-            generating={generating}
-          />
+        <ProductsPanel 
+          sessionId={sessionId}
+          requirements={analysis?.extracted_requirements || []}
+          onGenerate={handleGenerate}  // ← Changé ici
+          generating={generating}
+        />
         )}
 
         {/* STEP 3 — Offer */}

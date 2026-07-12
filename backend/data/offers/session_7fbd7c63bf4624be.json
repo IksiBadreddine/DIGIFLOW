@@ -1,0 +1,50 @@
+{
+  "title": "Offre Technique - Projet Client",
+  "reference": "REF-SESSION_",
+  "date": "12/07/2026",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Nous vous proposons une solution technique complète répondant à vos besoins."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le système doit fournir une connectivité réseau fiable..."
+    },
+    {
+      "title": "3. Solution Technique",
+      "content": "La solution proposée comprend les équipements suivants..."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch Cisco CBS350-24P-4G",
+      "reference": "CBS350-24P-4G",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 1,
+      "unit_price_eur": 1500,
+      "remarks": "Switch manageable 24 ports PoE+"
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Switch 24 ports PoE+",
+      "specified_value": "24 ports PoE+",
+      "product_response": "24 ports PoE+",
+      "status": "CONFORME",
+      "remarks": "OK"
+    }
+  ],
+  "total_compliance_rate": 0.85,
+  "selected_products": [
+    "ups-1500va",
+    "rack-19-20u",
+    "cable-cat6-utp",
+    "cam-hikvision-dome-4mp",
+    "sw-cbs350-24p-4g",
+    "connector-rj45-cat6"
+  ]
+}
