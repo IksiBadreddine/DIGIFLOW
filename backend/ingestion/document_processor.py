@@ -37,16 +37,17 @@ class DocumentProcessor:
         ]
     
     def process_file(self, file_path: str) -> Optional[ExtractedDocument]:
-        """Traite un fichier avec l'ingestor approprié"""
         if not os.path.exists(file_path):
             logger.error(f"Fichier inexistant: {file_path}")
             return None
         
         logger.info(f"Traitement du fichier: {file_path}")
+        logger.info(f"Extension: {os.path.splitext(file_path)[1]}")
         
         # Trouver l'ingestor approprié
         for ingestor in self.ingestors:
             if ingestor.can_handle(file_path):
+                logger.info(f"✅ Ingestor trouvé: {ingestor.__class__.__name__}")
                 try:
                     result = ingestor.ingest(file_path)
                     if result and result.status != DocumentStatus.FAILED:

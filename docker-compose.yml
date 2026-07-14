@@ -2,6 +2,58 @@ version: "3.9"
 
 services:
 
+  # ============================================================
+  # POSTGRESQL - Base de données des métadonnées
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: presalesai_postgres
+    environment:
+      POSTGRES_DB: digiflow
+      POSTGRES_USER: digiflow
+      POSTGRES_PASSWORD: digiflow123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - presalesai_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digiflow -d digiflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================
+  # MINIO - Stockage des fichiers (S3 compatible)
+  # ============================================================
+  minio:
+    image: minio/minio:latest
+    container_name: presalesai_minio
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console Web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - presalesai_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================
+  # BACKEND - FastAPI
+  # ============================================================
   backend:
     build:
       context: ./backend
@@ -10,13 +62,47 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # OpenAI
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      
+      # PostgreSQL
+      - DATABASE_URL=postgresql://digiflow:digiflow123@postgres:5432/digiflow
+      
+      # MinIO
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_BUCKET=documents
+      - MINIO_SECURE=false
+      - KNOWLEDGE_BASE_PREFIX=knowledge_base/
+      
+      # ChromaDB
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
+      
+      # Upload
       - UPLOAD_DIR=/app/data/uploads
       - MAX_FILE_SIZE_MB=20
+      
+      # LLM (Ollama)
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_PROVIDER=ollama
+      - LLM_MODEL=qwen2.5:7b
+      
+      # Embeddings
+      - EMBEDDING_PROVIDER=huggingface
+      - EMBEDDING_MODEL=BAAI/bge-m3
     volumes:
       - presales_data:/app/data
+      - ./backend:/app  # Pour le développement (code en direct)
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - presalesai_network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -24,6 +110,9 @@ services:
       timeout: 10s
       retries: 3
 
+  # ============================================================
+  # FRONTEND - React
+  # ============================================================
   frontend:
     build:
       context: ./frontend
@@ -33,7 +122,48 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - presalesai_network
     restart: unless-stopped
 
+  # ============================================================
+  # OLLAMA - LLM Local (optionnel)
+  # ============================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: presalesai_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - presalesai_network
+    restart: unless-stopped
+    # Décommenter pour pré-télécharger les modèles
+    # command: sh -c "ollama pull qwen2.5:7b && ollama pull nomic-embed-text"
+
+# ============================================================
+# VOLUMES
+# ============================================================
 volumes:
   presales_data:
+    name: presalesai_data
+  postgres_data:
+    name: presalesai_postgres_data
+  minio_data:
+    name: presalesai_minio_data
+  ollama_data:
+    name: presalesai_ollama_data
+  huggingface_cache:
+    name: presalesai_huggingface_cache
+
+# ============================================================
+# NETWORKS
+# ============================================================
+networks:
+  presalesai_network:
+    name: presalesai_network
+    driver: bridge

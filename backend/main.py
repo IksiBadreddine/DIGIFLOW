@@ -4,7 +4,11 @@ import logging
 import os
 
 from routers import analyze, offer
-from scripts.index_knowledge_base import index_knowledge_base
+# ✅ Supprimer l'indexation automatique
+# from scripts.index_knowledge_base import index_knowledge_base
+
+# ✅ Ajouter le watcher
+from services.minio_watcher import MinioWatcher
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -29,22 +33,39 @@ app.add_middleware(
 app.include_router(analyze.router)
 app.include_router(offer.router)
 
+# ✅ Watcher global
+watcher = None
+
 
 @app.on_event("startup")
 async def startup_event():
     """
-    Indexe la base de connaissances au démarrage
+    Démarre le backend et le watcher MinIO
     """
+    global watcher
+    
     logger.info("🚀 Démarrage du backend DIGIFLOW...")
     
-    # Indexer la base de connaissances
+    # ✅ Démarrer le watcher MinIO (surveillance automatique)
     try:
-        count = index_knowledge_base()
-        logger.info(f"📚 Base de connaissances: {count} documents indexés")
+        watcher = MinioWatcher(check_interval=30)  # Vérifie toutes les 30s
+        watcher.start()
+        logger.info("📂 Watcher MinIO démarré")
     except Exception as e:
-        logger.error(f"⚠️ Erreur d'indexation: {e}")
+        logger.error(f"⚠️ Erreur de démarrage du watcher: {e}")
     
     logger.info("✅ Backend prêt !")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Arrête le watcher proprement
+    """
+    global watcher
+    if watcher:
+        watcher.stop()
+        logger.info("⏹️ Watcher MinIO arrêté")
 
 
 @app.get("/health")
@@ -54,5 +75,6 @@ async def health_check():
         "status": "ok",
         "model": os.getenv("LLM_MODEL", "qwen2.5:7b"),
         "ingestion": "active",
+        "watcher": "running" if watcher and watcher.running else "stopped",
         "version": "1.0.0"
     }
