@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+import uuid
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://digiflow:digiflow123@postgres:5432/digiflow")
 
