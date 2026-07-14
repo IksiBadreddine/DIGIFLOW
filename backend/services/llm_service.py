@@ -38,7 +38,7 @@ def get_llm(temperature: float = 0.1) -> ChatOllama:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
     return ChatOllama(
-        model=os.getenv("LLM_MODEL", "qwen2.5:7b"),
+        model=os.getenv("LLM_MODEL", "qwen3:8b"),
         base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=temperature,
         num_predict=8192,     # ✅ Maximum tokens à générer (pour les longs CDC)
