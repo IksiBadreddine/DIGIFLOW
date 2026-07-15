@@ -288,10 +288,13 @@ def match_product_compliance(
     logger.info(f"Matching produit: {product.get('reference', 'unknown')}")
     
     # Préparer le contexte
-    context_text = "\n\n---\n\n".join(
-        doc.page_content[:500]  # Limiter chaque contexte
-        for doc in context_docs[:3]
-    )
+    context_parts = []
+
+    for doc in context_docs[:3]:
+        if isinstance(doc, dict):
+            context_parts.append(doc.get("content", "")[:500])
+
+    context_text = "\n\n---\n\n".join(context_parts)
     
     product_info = (
         f"Fabricant : {product['manufacturer']}\n"
