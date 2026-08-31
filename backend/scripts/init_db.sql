@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS documents (
     publication_date TIMESTAMP,
     page_count INTEGER,
     language VARCHAR(10),
-    tags TEXT[],
+    tags JSONB DEFAULT '[]',  -- ✅ CHANGÉ : text[] → JSONB
     
     -- Champs spécifiques
     manufacturer VARCHAR(200),
     standard_code VARCHAR(100),
-    project_id UUID,
-    session_id UUID,
+    project_id VARCHAR(100),   -- ✅ CHANGÉ : UUID → VARCHAR
+    session_id VARCHAR(100),   -- ✅ CHANGÉ : UUID → VARCHAR
     
     -- Contenu
     full_text TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
 -- Table: document_chunks
 CREATE TABLE IF NOT EXISTS document_chunks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(100) PRIMARY KEY,   -- ✅ CHANGÉ : UUID → VARCHAR
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     content TEXT NOT NULL,
@@ -56,13 +56,13 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     start_char INTEGER,
     end_char INTEGER,
     vector_id VARCHAR(100),
-    metadata JSONB DEFAULT '{}',
+    chunk_metadata JSONB DEFAULT '{}',  -- ✅ CHANGÉ : metadata → chunk_metadata
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table: document_metadata
-CREATE TABLE IF NOT EXISTS document_metadata (
+-- Table: document_meta
+CREATE TABLE IF NOT EXISTS document_meta (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     key VARCHAR(100) NOT NULL,
@@ -88,10 +88,31 @@ CREATE TABLE IF NOT EXISTS projects (
     main_boq_id UUID,
     compliance_score DECIMAL(5,2),
     offer_generated_at TIMESTAMP,
-    metadata JSONB DEFAULT '{}',
+    project_metadata JSONB DEFAULT '{}',  -- ✅ CHANGÉ : metadata → project_metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Table: products (catalogue dynamique)
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(500) NOT NULL,
+    manufacturer VARCHAR(200),
+    reference VARCHAR(200),
+    category VARCHAR(100),
+    specs JSONB DEFAULT '{}',
+    tags JSONB DEFAULT '[]', 
+    datasheet_summary TEXT,
+    datasheet_document_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_products_manufacturer ON products(manufacturer);
+CREATE INDEX idx_products_category ON products(category);
+CREATE INDEX idx_products_product_id ON products(product_id);
 
 -- Table: sessions
 CREATE TABLE IF NOT EXISTS sessions (
@@ -171,5 +192,5 @@ CREATE TRIGGER update_sessions_updated_at
 DO $$
 BEGIN
     RAISE NOTICE '✅ Base de données initialisée avec succès !';
-    RAISE NOTICE '📊 Tables créées: documents, document_chunks, document_metadata, projects, sessions, ingestion_logs';
+    RAISE NOTICE '📊 Tables créées: documents, document_chunks, document_meta, projects, sessions, ingestion_logs';
 END $$;

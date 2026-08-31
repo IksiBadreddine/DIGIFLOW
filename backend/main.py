@@ -10,6 +10,10 @@ from routers import analyze, offer
 # ✅ Ajouter le watcher
 from services.minio_watcher import MinioWatcher
 
+from dotenv import load_dotenv
+
+load_dotenv() 
+
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

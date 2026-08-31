@@ -26,7 +26,7 @@ class BaseIngestor(ABC):
         self.chunk_overlap = self.config.get("chunk_overlap", 120)
     
     @abstractmethod
-    def can_handle(self, file_path: str, file_type: Optional[str] = None) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Vérifie si cet ingestor peut traiter le fichier"""
         pass
     

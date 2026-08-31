@@ -7,7 +7,11 @@ from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import uuid
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://digiflow:digiflow123@postgres:5432/digiflow")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://digiflow:digiflow123@localhost:5432/digiflow"  # ← localhost par défaut
+)
+
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -92,6 +96,23 @@ class Project(Base):
     compliance_score = Column(Float)
     offer_generated_at = Column(DateTime)
     project_metadata = Column(JSON, default={})  # ✅ Renommé
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+class Product(Base):
+    __tablename__ = "products"
+    
+    id = Column(String(36), primary_key=True)
+    product_id = Column(String(100), unique=True, nullable=False)
+    name = Column(String(500), nullable=False)
+    manufacturer = Column(String(200))
+    reference = Column(String(200))
+    category = Column(String(100))
+    specs = Column(JSON, default={})
+    tags = Column(JSON, default=list)
+    datasheet_summary = Column(Text)
+    datasheet_document_id = Column(String(36), ForeignKey("documents.id", ondelete="SET NULL"))
+    
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -12,6 +12,7 @@ from services.llm_service import extract_requirements, match_product_compliance
 from services.vector_store import VectorStore
 from services.storage_service import StorageService
 from services.document_service import DocumentService
+from services.product_service import ProductService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -249,29 +250,52 @@ async def list_collections():
 async def get_products():
     """
     Récupère le catalogue produits
+    Priorité : PostgreSQL → fallback JSON
     """
-    import json
-    catalog_path = os.getenv("CATALOG_PATH", "data/products/catalog.json")
-    
-    if not os.path.exists(catalog_path):
-        return JSONResponse({
-            "products": [],
-            "count": 0,
-            "error": "Catalogue non trouvé"
-        })
-    
     try:
-        with open(catalog_path, 'r', encoding='utf-8') as f:
-            catalog = json.load(f)
-            products = catalog.get("products", [])
-            return JSONResponse({
-                "products": products,
-                "count": len(products),
-                "success": True
-            })
-    except Exception as e:
+        # ✅ ESSAYER D'ABORD POSTGRESQL
+        from services.product_service import ProductService
+        
+        product_service = ProductService()
+        products = product_service.get_all_products()
+        product_service.close()
+        
         return JSONResponse({
-            "products": [],
-            "count": 0,
-            "error": str(e)
+            "products": products,
+            "count": len(products),
+            "success": True,
+            "source": "postgresql"
         })
+        
+    except Exception as e:
+        logger.warning(f"⚠️ PostgreSQL non disponible: {e}")
+        
+        # ✅ FALLBACK SUR LE FICHIER JSON
+        import json
+        catalog_path = os.getenv("CATALOG_PATH", "data/products/catalog.json")
+        
+        if not os.path.exists(catalog_path):
+            return JSONResponse({
+                "products": [],
+                "count": 0,
+                "error": "Catalogue non trouvé",
+                "source": "none"
+            })
+        
+        try:
+            with open(catalog_path, 'r', encoding='utf-8') as f:
+                catalog = json.load(f)
+                products = catalog.get("products", [])
+                return JSONResponse({
+                    "products": products,
+                    "count": len(products),
+                    "success": True,
+                    "source": "json_fallback"
+                })
+        except Exception as e2:
+            return JSONResponse({
+                "products": [],
+                "count": 0,
+                "error": str(e2),
+                "source": "error"
+            })

@@ -98,42 +98,37 @@ class MinioWatcher:
         logger.info(f"📄 Nouveau fichier détecté: {object_path}")
         
         try:
-            # 1. Vérifier si déjà indexé
+            # ✅ Vérifier si déjà indexé
             existing = self.doc_service.get_document_by_minio_path(object_path)
             if existing:
                 logger.info(f"  ⏭️ Document déjà indexé")
                 return
             
-            # 2. Télécharger depuis MinIO en gardant l'extension
-            filename = os.path.basename(object_path)
+            # ✅ 1. Extraire le nom original
+            original_filename = os.path.basename(object_path)
+            _, ext = os.path.splitext(original_filename)
             
-            # ✅ Créer un fichier temporaire avec la bonne extension
+            # ✅ 2. Créer un fichier temporaire avec la bonne extension
             import tempfile
-            import uuid
-            
-            # Extraire l'extension du nom de fichier
-            _, ext = os.path.splitext(filename)
-            
-            # Créer un fichier temporaire avec l'extension
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
                 temp_path = tmp_file.name
             
-            # Télécharger vers ce fichier
+            # ✅ 3. Télécharger depuis MinIO
             self.storage.download_file(object_path, temp_path)
             
-            # 3. Lire le contenu pour le hash
+            # ✅ 4. Lire le contenu pour le hash
             with open(temp_path, 'rb') as f:
                 file_content = f.read()
             
-            # 4. Ingérer
-            doc = self.processor.process_file(temp_path)
+            # ✅ 5. Ingérer en passant le nom original
+            doc = self.processor.process_file(temp_path, original_filename=original_filename)
             
             if not doc or doc.status.value == "failed":
                 error = doc.error if doc else "Erreur d'ingestion"
                 logger.error(f"  ❌ Échec d'ingestion: {error}")
                 return
             
-            # 5. Indexer dans ChromaDB
+            # 6. Indexer dans ChromaDB
             vector_ids = []
             for chunk in doc.chunks:
                 try:
@@ -153,7 +148,7 @@ class MinioWatcher:
                 except Exception as e:
                     logger.warning(f"  ⚠️ Erreur d'indexation chunk: {e}")
             
-            # 6. Sauvegarder dans PostgreSQL
+            # 7. Sauvegarder dans PostgreSQL
             category = object_path.split('/')[1] if len(object_path.split('/')) > 1 else "other"
             doc_id = self.doc_service.save_document(
                 doc=doc,
@@ -164,7 +159,7 @@ class MinioWatcher:
             
             logger.info(f"  ✅ Document indexé: {doc.filename} ({len(doc.chunks)} chunks, {len(vector_ids)} vecteurs)")
             
-            # 7. Nettoyer
+            # 8. Nettoyer
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
                 
