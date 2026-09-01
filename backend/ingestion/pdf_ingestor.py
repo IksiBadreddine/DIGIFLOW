@@ -15,12 +15,13 @@ logger = logging.getLogger(__name__)
 class PDFIngestor(BaseIngestor):
     """Ingestor pour les PDF standards"""
     
-    def can_handle(self, file_path: str) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Vérifie si c'est un PDF standard (non datasheet, non norme)"""
         if not file_path.lower().endswith('.pdf'):
             return False
         
-        filename = os.path.basename(file_path).lower()
+        filename = original_filename or os.path.basename(file_path)
+        filename = filename.lower()
         
         # ✅ EXCLURE les datasheets (ils ont leur propre ingestor)
         datasheet_keywords = ['datasheet', 'data sheet']

@@ -216,42 +216,93 @@ def extract_requirements(cdc_text: str) -> dict:
 # ============================================================
 # 2. PRODUCT COMPLIANCE
 # ============================================================
-
 MATCH_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        """Tu es un ingénieur réseaux expert en conformité technique.
+        """Tu es un ingénieur avant-vente expert en réseaux, télécoms et sécurité (ICT/ELV), spécialisé dans l'évaluation de conformité technique.
 
-Compare les exigences avec les caractéristiques du produit.
+Compare les exigences du cahier des charges avec les caractéristiques du produit proposé.
 
-⚠️ RÈGLES STRICTES :
-1. Réponds UNIQUEMENT en JSON
-2. Le JSON doit être COMPLET
-3. Sois PRÉCIS dans l'évaluation
+⚠️ RÈGLES STRICTES DE SCORING :
+1. **CONFORME (100%)** : Le produit répond EXACTEMENT à l'exigence. Aucun écart.
+   - Exemple : "24 ports" → produit a "24 ports Gigabit Ethernet"
+   
+2. **PARTIEL (50%)** : Le produit répond PARTIELLEMENT à l'exigence.
+   - Exemple : "24 ports" → produit a "16 ports" ou "8 ports PoE + 8 ports non PoE"
+   - Exemple : "PoE+ 370W" → produit a "PoE 150W"
+   
+3. **NON_CONFORME (0%)** : Le produit NE répond PAS à l'exigence.
+   - Exemple : "24 ports" → produit a "8 ports"
+   - Exemple : "PoE+" → produit n'a pas de PoE
 
-Structure obligatoire :
+📊 CALCUL DU SCORE GLOBAL :
+- Le score global est la MOYENNE des scores individuels
+- Chaque exigence a un poids égal (sauf si priorité indiquée)
+- Score = (somme des scores individuels) / (nombre total d'exigences)
+
+📋 STRUCTURE DE RÉPONSE OBLIGATOIRE :
 
 {{
-  "compliance_score": 0.95,
+  "compliance_score": 0.85,
   "compliance_rows": [
     {{
       "requirement_id": "REQ-001",
-      "requirement_text": "Texte de l'exigence",
-      "specified_value": "Valeur spécifiée",
-      "product_response": "Ce que le produit offre",
-      "status": "CONFORME|PARTIEL|NON_CONFORME",
-      "remarks": "Commentaire"
+      "requirement_text": "Switch 24 ports PoE+",
+      "specified_value": "24 ports, PoE+ 370W",
+      "product_response": "24 ports Gigabit Ethernet, PoE+ 195W",
+      "status": "CONFORME",
+      "score": 1.0,
+      "remarks": "Le produit répond exactement avec 24 ports et PoE+"
+    }},
+    {{
+      "requirement_id": "REQ-002",
+      "requirement_text": "Support VLAN 802.1Q",
+      "specified_value": "802.1Q VLAN",
+      "product_response": "Support VLAN complet",
+      "status": "CONFORME",
+      "score": 1.0,
+      "remarks": "Support VLAN conforme à la norme 802.1Q"
+    }},
+    {{
+      "requirement_id": "REQ-003",
+      "requirement_text": "4 caméras IP 4MP",
+      "specified_value": "4 caméras, 4MP",
+      "product_response": "Caméra IP 4MP",
+      "status": "PARTIEL",
+      "score": 0.5,
+      "remarks": "Le produit est une caméra 4MP mais ne fournit qu'une unité, pas 4"
     }}
   ],
   "strengths": [
-    "Point fort 1",
-    "Point fort 2"
+    "24 ports PoE+ avec budget suffisant",
+    "Support VLAN 802.1Q complet",
+    "Supervision SNMP v3"
   ],
   "gaps": [
-    "Écart 1",
-    "Écart 2"
+    "Ne fournit qu'une caméra, pas 4",
+    "Pas de support SFP+",
+    "Non compatible avec le stacking"
   ]
 }}
+
+🔍 CRITÈRES D'ÉVALUATION :
+
+1. **Compatibilité technique** : Le produit supporte-t-il les protocoles/normes requis ?
+2. **Capacité/Performance** : Les spécifications quantitatives sont-elles suffisantes ?
+3. **Fonctionnalités** : Les fonctionnalités requises sont-elles présentes ?
+4. **Intégration** : Le produit s'intègre-t-il dans l'environnement existant ?
+5. **Évolutivité** : Le produit permet-il une évolution future ?
+
+🎯 PRODUITS SPÉCIFIQUES À ÉVALUER :
+- Les commutateurs (switches) doivent être évalués sur : ports, PoE, VLAN, SNMP, sécurité
+- Les caméras doivent être évaluées sur : résolution, vision nocturne, PoE, protocoles
+- Les onduleurs doivent être évalués sur : puissance, autonomie, gestion, connectivité
+- Les câbles/connectiques sur : catégorie, normes, longueur
+
+💡 CONSEILS :
+- Un produit peut être CONFORME pour une exigence réseau mais NON_CONFORME pour une exigence vidéo
+- La réponse produit doit être extraite des spécifications disponibles
+- Les remarques doivent être PRÉCISES et JUSTIFIÉES
 
 Génère le JSON MAINTENANT :
 """,
@@ -259,49 +310,45 @@ Génère le JSON MAINTENANT :
     (
         "human",
         """
-EXIGENCES TECHNIQUES :
+📋 EXIGENCES TECHNIQUES À ÉVALUER :
 
 {requirements_json}
 
-PRODUIT À ÉVALUER :
+📦 PRODUIT À ÉVALUER :
 
 {product_info}
 
-CONTEXTE EXTRAIT DU CDC :
+📚 CONTEXTE (extraits de documents pertinents) :
 
 {context}
 
-➡️ ÉVALUE LA CONFORMITÉ EN JSON COMPLET :
+➡️ ÉVALUE LA CONFORMITÉ DU PRODUIT PAR RAPPORT AUX EXIGENCES EN JSON COMPLET :
 """,
     ),
 ])
 
 
 def match_product_compliance(
-    requirements: List[Dict[str, Any]],
-    product: Dict[str, Any],
-    context_docs: List[Any],
-) -> Dict[str, Any]:
-    """
-    Matches a product against requirements and returns compliance scores.
-    """
-    logger.info(f"Matching produit: {product.get('reference', 'unknown')}")
+    requirements: list[dict],
+    product: dict,
+    context_docs: list = None
+) -> dict:
+    """Match un produit avec les exigences (avec contexte RAG)"""
     
     # Préparer le contexte
-    context_parts = []
-
-    for doc in context_docs[:3]:
-        if isinstance(doc, dict):
-            context_parts.append(doc.get("content", "")[:500])
-
-    context_text = "\n\n---\n\n".join(context_parts)
+    context_text = ""
+    if context_docs:
+        for doc in context_docs[:3]:
+            content = doc.get("content", "")[:500]
+            if content:
+                context_text += f"\n---\n{content}\n"
     
+    # Préparer les infos produit
     product_info = (
-        f"Fabricant : {product['manufacturer']}\n"
-        f"Référence : {product['reference']}\n"
-        f"Catégorie : {product.get('category', 'N/A')}\n"
-        f"Description : {product['datasheet_summary'][:500]}\n"
-        f"Spécifications : {json.dumps(product['specs'], ensure_ascii=False, indent=2)}"
+        f"Nom : {product.get('name', '')}\n"
+        f"Fabricant : {product.get('manufacturer', '')}\n"
+        f"Référence : {product.get('reference', '')}\n"
+        f"Spécifications : {json.dumps(product.get('specs', {}), ensure_ascii=False, indent=2)}"
     )
     
     llm = get_llm(temperature=0.0)

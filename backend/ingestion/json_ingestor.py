@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class JsonIngestor(BaseIngestor):
     """Ingestor pour les fichiers JSON"""
     
-    def can_handle(self, file_path: str) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Vérifie si c'est un fichier JSON"""
         return file_path.lower().endswith('.json')
     

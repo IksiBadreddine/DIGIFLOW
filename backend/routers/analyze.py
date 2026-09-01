@@ -5,27 +5,29 @@ import json
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from typing import Optional, List
+import asyncio 
 
 from ingestion import DocumentProcessor
 from services.llm_service import extract_requirements, match_product_compliance
 from services.vector_store import VectorStore
 from services.storage_service import StorageService
 from services.document_service import DocumentService
-from services.product_service import ProductService
+from services.product_service import ProductService  # ✅ AJOUTER
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+class MatchRequest(BaseModel):
+    requirements: List[dict]
+    products: List[dict]
 
 
 @router.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
     """
-    Analyse un document uploadé :
-    1. Sauvegarde dans MinIO + PostgreSQL
-    2. Ingestion et indexation dans ChromaDB
-    3. Extraction des exigences avec LLM
-    4. Matching avec les produits du catalogue
+    Analyse un document uploadé avec matching parallèle
     """
     logger.info(f"📄 Analyse du fichier: {file.filename}")
     
@@ -34,6 +36,7 @@ async def analyze_document(file: UploadFile = File(...)):
     doc_service = DocumentService()
     processor = DocumentProcessor()
     vector_store = VectorStore()
+    product_service = ProductService()
     
     # 2. Sauvegarder le fichier temporairement
     upload_dir = os.getenv("UPLOAD_DIR", "./uploads")
@@ -82,7 +85,7 @@ async def analyze_document(file: UploadFile = File(...)):
                 vector_store.add_document(
                     content=chunk.content,
                     metadata={
-                        "document_id": str(doc_id), 
+                        "document_id": doc_id,
                         "document_type": doc.document_type.value,
                         "filename": doc.filename,
                         "chunk_index": chunk.metadata.get("chunk_index", 0),
@@ -101,61 +104,101 @@ async def analyze_document(file: UploadFile = File(...)):
         requirements = requirements_result.get("requirements", [])
         logger.info(f"✅ {len(requirements)} exigences extraites")
         
-        # 9. Charger le catalogue produits
-        catalog_path = "data/products/catalog.json"
-        products = []
-        if os.path.exists(catalog_path):
-            with open(catalog_path, "r", encoding="utf-8") as f:
-                catalog = json.load(f)
-                products = catalog.get("products", [])
+        # 9. Récupérer le catalogue depuis PostgreSQL
+        products = product_service.get_all_products()
+        logger.info(f"✅ {len(products)} produits chargés depuis PostgreSQL")
         
-        # 10. Rechercher des documents pertinents dans la base de connaissances
-        # pour enrichir le matching
+        # 10. Recherche dans ChromaDB pour le contexte RAG
         context_docs = []
         if requirements:
-            # Prendre les 3 premières exigences pour la recherche
-            query = " ".join([req.get("description", "") for req in requirements[:3]])
-            context_results = vector_store.search(query, collection="knowledge_base", n_results=3)
-            context_docs = [{"content": r.get("content", ""), "metadata": r.get("metadata", {})} for r in context_results]
+            query = " ".join([req.get("description", "") for req in requirements[:5]])
+            logger.info(f"🔍 Recherche RAG: {query[:100]}...")
+            
+            context_results = vector_store.search(
+                query=query,
+                collection="knowledge_base",
+                n_results=4
+            )
+            
+            for r in context_results:
+                context_docs.append({
+                    "content": r.get("content", ""),
+                    "metadata": r.get("metadata", {})
+                })
+            
+            logger.info(f"✅ {len(context_docs)} documents trouvés dans ChromaDB")
         
-        # 11. Match les produits avec les exigences
-        matched_products = []
-        for product in products:
+        # 11. ✅ MATCHING PAR LOTS DE 2
+        logger.info(f"🧠 Lancement du matching pour {len(products)} produits")
+
+        # ✅ Fonction de matching asynchrone
+        async def match_product_async(product):
             try:
-                # Simuler un matching pour l'instant
-                # Dans une vraie implémentation, on utiliserait l'IA
-                match_result = match_product_compliance(
-                    requirements=requirements[:10],
-                    product=product,
-                    context_docs=context_docs[:3] if context_docs else []
+                product_dict = {
+                    "id": product.get("product_id", product.get("id")),
+                    "name": product.get("name", ""),
+                    "manufacturer": product.get("manufacturer", ""),
+                    "reference": product.get("reference", ""),
+                    "category": product.get("category", ""),
+                    "specs": product.get("specs", {}),
+                    "tags": product.get("tags", []),
+                    "datasheet_summary": product.get("datasheet_summary", "")
+                }
+                
+                loop = asyncio.get_event_loop()
+                match_result = await loop.run_in_executor(
+                    None,
+                    match_product_compliance,
+                    requirements[:8],
+                    product_dict,
+                    context_docs[:2]
                 )
                 
-                matched_products.append({
-                    "product_id": product.get("id"),
-                    "product_name": product.get("name"),
-                    "manufacturer": product.get("manufacturer"),
-                    "reference": product.get("reference"),
+                return {
+                    "product_id": match_result.get("product_id", product_dict.get("id")),
+                    "product_name": match_result.get("product_name", product_dict.get("name")),
+                    "manufacturer": match_result.get("manufacturer", product_dict.get("manufacturer")),
+                    "reference": match_result.get("reference", product_dict.get("reference")),
                     "compliance_score": match_result.get("compliance_score", 0.5),
                     "compliance_rows": match_result.get("compliance_rows", []),
-                    "strengths": match_result.get("strengths", ["Compatible"]),
-                    "gaps": match_result.get("gaps", [])
-                })
+                    "strengths": match_result.get("strengths", ["Produit disponible"]),
+                    "gaps": match_result.get("gaps", ["Vérification requise"])
+                }
+                
             except Exception as e:
-                logger.warning(f"Erreur de matching pour {product.get('name')}: {e}")
-                # Fallback: score aléatoire
-                matched_products.append({
-                    "product_id": product.get("id"),
+                logger.warning(f"Erreur de matching: {e}")
+                return {
+                    "product_id": product.get("product_id"),
                     "product_name": product.get("name"),
                     "manufacturer": product.get("manufacturer"),
-                    "reference": product.get("reference"),
-                    "compliance_score": 0.5,
+                    "compliance_score": 0.3,
                     "compliance_rows": [],
                     "strengths": ["Produit disponible"],
-                    "gaps": ["Vérification requise"]
-                })
-        
+                    "gaps": ["Erreur de matching"]
+                }
+
+        # ✅ Traiter par lots de 2
+        batch_size = 2
+        all_matched = []
+
+        for i in range(0, len(products), batch_size):
+            batch = products[i:i+batch_size]
+            logger.info(f"📦 Lot {i//batch_size + 1}: {len(batch)} produits")
+            
+            tasks = [match_product_async(p) for p in batch]
+            results = await asyncio.gather(*tasks)
+            all_matched.extend(results)
+            
+            # Pause entre les lots
+            if i + batch_size < len(products):
+                logger.info("⏳ Pause de 1s...")
+                await asyncio.sleep(1)
+
+        matched_products = all_matched
+
         # Trier par score
         matched_products.sort(key=lambda x: x.get("compliance_score", 0), reverse=True)
+        logger.info(f"✅ Matching terminé: {len(matched_products)} produits évalués")
         
         # 12. Construire la réponse
         return JSONResponse({
@@ -186,76 +229,16 @@ async def analyze_document(file: UploadFile = File(...)):
             except Exception as e:
                 logger.warning(f"Erreur de nettoyage: {e}")
     
-    # Fermer la connexion PostgreSQL
+    # Fermer les connexions
     doc_service.close()
-
-
-@router.get("/api/search")
-async def search_knowledge(
-    q: str,
-    limit: int = 5,
-    collection: str = "knowledge_base"
-):
-    """
-    Recherche dans la base de connaissances
-    """
-    logger.info(f"🔍 Recherche: {q}")
-    
-    vector_store = VectorStore()
-    results = vector_store.search(q, collection=collection, n_results=limit)
-    
-    if not results:
-        return JSONResponse({
-            "query": q,
-            "results": [],
-            "count": 0
-        })
-    
-    # Formater les résultats
-    formatted_results = []
-    for result in results:
-        formatted_results.append({
-            "content": result.get("content", ""),
-            "score": 1 - result.get("distance", 1) if result.get("distance") else 0,
-            "metadata": result.get("metadata", {})
-        })
-    
-    return JSONResponse({
-        "query": q,
-        "results": formatted_results,
-        "count": len(formatted_results)
-    })
-
-
-@router.get("/api/collections")
-async def list_collections():
-    """
-    Liste toutes les collections ChromaDB
-    """
-    vector_store = VectorStore()
-    collections = vector_store.list_collections()
-    
-    result = []
-    for name in collections:
-        info = vector_store.get_collection_info(name)
-        result.append(info)
-    
-    return JSONResponse({
-        "collections": result,
-        "count": len(result)
-    })
-
+    product_service.close()
 
 @router.get("/api/products")
 async def get_products():
     """
-    Récupère le catalogue produits
-    Priorité : PostgreSQL → fallback JSON
+    Récupère le catalogue produits depuis PostgreSQL
     """
     try:
-        # ✅ ESSAYER D'ABORD POSTGRESQL
-        from services.product_service import ProductService
-        
         product_service = ProductService()
         products = product_service.get_all_products()
         product_service.close()
@@ -268,34 +251,73 @@ async def get_products():
         })
         
     except Exception as e:
-        logger.warning(f"⚠️ PostgreSQL non disponible: {e}")
+        logger.error(f"Erreur de récupération du catalogue: {e}")
         
-        # ✅ FALLBACK SUR LE FICHIER JSON
+        # Fallback sur JSON
         import json
         catalog_path = os.getenv("CATALOG_PATH", "data/products/catalog.json")
         
-        if not os.path.exists(catalog_path):
-            return JSONResponse({
-                "products": [],
-                "count": 0,
-                "error": "Catalogue non trouvé",
-                "source": "none"
-            })
+        if os.path.exists(catalog_path):
+            try:
+                with open(catalog_path, 'r', encoding='utf-8') as f:
+                    catalog = json.load(f)
+                    products = catalog.get("products", [])
+                    return JSONResponse({
+                        "products": products,
+                        "count": len(products),
+                        "success": True,
+                        "source": "json_fallback"
+                    })
+            except Exception as e2:
+                pass
         
+        return JSONResponse({
+            "products": [],
+            "count": 0,
+            "success": False,
+            "error": str(e)
+        })
+
+@router.post("/api/match")
+async def match_products(request: MatchRequest):
+    """
+    Test du matching : reçoit des exigences et des produits, retourne les scores
+    """
+    requirements = request.requirements
+    products = request.products
+    
+    if not requirements or not products:
+        return JSONResponse({
+            "error": "requirements et products sont requis"
+        }, status_code=400)
+    
+    logger.info(f"🧠 Matching: {len(requirements)} exigences, {len(products)} produits")
+    
+    # ✅ Utiliser la vraie fonction de matching
+    from services.llm_service import match_product_compliance
+    
+    results = []
+    for product in products:
         try:
-            with open(catalog_path, 'r', encoding='utf-8') as f:
-                catalog = json.load(f)
-                products = catalog.get("products", [])
-                return JSONResponse({
-                    "products": products,
-                    "count": len(products),
-                    "success": True,
-                    "source": "json_fallback"
-                })
-        except Exception as e2:
-            return JSONResponse({
-                "products": [],
-                "count": 0,
-                "error": str(e2),
-                "source": "error"
+            # Convertir le produit si nécessaire
+            product_dict = product if isinstance(product, dict) else product.__dict__
+            
+            result = match_product_compliance(
+                requirements=requirements[:10],
+                product=product_dict,
+                context_docs=[]
+            )
+            results.append(result)
+        except Exception as e:
+            logger.error(f"Erreur de matching: {e}")
+            results.append({
+                "product_id": product_dict.get("id", product_dict.get("product_id")),
+                "product_name": product_dict.get("name", "Inconnu"),
+                "manufacturer": product_dict.get("manufacturer", "Inconnu"),
+                "compliance_score": 0.3,
+                "compliance_rows": [],
+                "strengths": ["Produit disponible"],
+                "gaps": ["Erreur de matching"]
             })
+    
+    return JSONResponse({"results": results})

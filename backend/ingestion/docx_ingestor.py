@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class DocxIngestor(BaseIngestor):
     """Ingestor pour les fichiers DOCX"""
     
-    def can_handle(self, file_path: str) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Vérifie si c'est un fichier DOCX"""
         return file_path.lower().endswith('.docx')
     

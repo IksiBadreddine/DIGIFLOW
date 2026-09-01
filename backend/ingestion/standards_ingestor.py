@@ -32,12 +32,13 @@ class StandardsIngestor(BaseIngestor):
         self.extract_cross_references = self.config.get("extract_cross_references", True)
         self.detect_sections = self.config.get("detect_sections", True)
     
-    def can_handle(self, file_path: str) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Détecte si c'est un document de norme"""
         if not file_path.lower().endswith('.pdf'):
             return False
         
-        filename = os.path.basename(file_path).lower()
+        filename = original_filename or os.path.basename(file_path)
+        filename = filename.lower()
         
         # 1. Détection par nom de fichier
         standard_keywords = ['ieee', 'iso', 'tia', 'nf', 'oncf', 'standard', 'norme']

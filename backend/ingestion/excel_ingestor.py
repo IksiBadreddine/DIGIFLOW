@@ -24,7 +24,7 @@ class ExcelIngestor(BaseIngestor):
         self.sheet_names = self.config.get("sheet_names", ["BOQ", "BoQ", "boq"])
         self.auto_detect_boq = self.config.get("auto_detect_boq", True)
     
-    def can_handle(self, file_path: str, file_type: Optional[str] = None) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         """Vérifie si c'est un fichier Excel"""
         ext = file_path.lower()
         return ext.endswith(('.xlsx', '.xls', '.xlsm', '.csv'))

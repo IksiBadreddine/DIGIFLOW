@@ -6,7 +6,7 @@ const API_URL = '/api';
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 1800000,  // ✅ 10 minutes
+  timeout: 3600000,  // ✅ 60 minutes
 
 });
 
@@ -18,7 +18,7 @@ export const analyzeDocument = async (file) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-    timeout: 1800000,  // ✅ 10 minutes
+    timeout: 3600000,  // ✅ 60 minutes
   });
 
   return response.data;

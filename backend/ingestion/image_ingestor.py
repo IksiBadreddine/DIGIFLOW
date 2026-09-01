@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class ImageIngestor(BaseIngestor):
     """Ingestor pour les images"""
     
-    def can_handle(self, file_path: str) -> bool:
+    def can_handle(self, file_path: str, original_filename: str = None) -> bool:
         ext = file_path.lower()
         return ext.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'))
     
