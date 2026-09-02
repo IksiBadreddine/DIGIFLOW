@@ -7,7 +7,6 @@ const API_URL = '/api';
 const api = axios.create({
   baseURL: API_URL,
   timeout: 3600000,  // ✅ 60 minutes
-
 });
 
 export const analyzeDocument = async (file) => {
@@ -46,13 +45,12 @@ export const searchKnowledge = async (query, limit = 5) => {
   return response.data;
 };
 
-// ✅ CORRECTION : Format de la requête
-export const generateOffer = async (sessionId, selectedProductIds) => {
-  // ✅ Vérifier que sessionId est une chaîne
-  // ✅ Vérifier que selectedProductIds est un tableau
+// ✅ CORRECTION : Ajout des exigences dans la requête
+export const generateOffer = async (sessionId, selectedProductIds, requirements = []) => {
   const payload = {
     session_id: sessionId,
-    selected_product_ids: selectedProductIds || []
+    selected_product_ids: selectedProductIds || [],
+    requirements: requirements || []  // ✅ AJOUTER CETTE LIGNE
   };
   
   console.log('📤 Génération offre payload:', payload);

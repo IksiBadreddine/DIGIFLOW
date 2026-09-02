@@ -1,0 +1,121 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, propose une offre technique pour le projet d'installation réseau d'entreprise. Ce projet vise à mettre en place une infrastructure réseau robuste et conforme aux normes en vigueur, avec un délai d'exécution de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une infrastructure réseau capable de supporter des applications critiques avec une alimentation électrique continue. Les exigences incluent un switch manageable avec PoE+ pour alimenter des caméras IP, une segmentation VLAN, et une supervision SNMP. Un onduleur est requis pour garantir la continuité électrique."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "1. Switch manageable avec minimum 24 ports et PoE+.\n2. Câblage structuré en Cat6.\n3. Onduleur avec autonomie minimale de 10 minutes.\n4. Baie de brassage 19 pouces avec capacité minimale de 20U.\n5. Supervision SNMP et segmentation VLAN."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "La solution repose sur un switch Cisco CBS350-24P-4G pour la gestion du réseau, offrant 24 ports avec PoE+ et 4 ports SFP pour les uplinks. Un onduleur Eaton 9PX assure la continuité électrique des équipements critiques. Le câblage structuré sera réalisé en Cat6, et l'ensemble sera hébergé dans une baie de brassage 22U, garantissant une installation ordonnée et évolutive."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Le switch Cisco CBS350-24P-4G a été choisi pour sa capacité à gérer le trafic réseau avec PoE+ et VLAN, essentiel pour les caméras IP. L'onduleur Eaton 9PX offre une protection continue avec une conversion double on-line, idéal pour les applications critiques. Ces choix garantissent une performance et une fiabilité optimales."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "Le réseau sera structuré autour du switch Cisco, avec un câblage Cat6 pour assurer une transmission de données rapide et fiable. La topologie inclura une segmentation VLAN pour séparer les flux de données et de vidéosurveillance, optimisant ainsi la sécurité et la performance du réseau."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Le projet sera exécuté en plusieurs phases :\n1. Planification et préparation du site.\n2. Installation du câblage et des équipements.\n3. Configuration des équipements réseau.\n4. Tests de validation et mise en service.\n5. Formation des utilisateurs finaux.\nChaque phase sera réalisée dans le respect des délais pour garantir une livraison dans les 2 semaines."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau de conformité ci-dessous détaille comment chaque exigence est adressée par notre solution."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch Manageable PoE+ CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Assure la gestion du réseau avec PoE+ et VLAN."
+    },
+    {
+      "pos": "2",
+      "designation": "Eaton 9PX On-Line Double Conversion UPS",
+      "reference": "",
+      "manufacturer": "Eaton",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Fournit une alimentation continue pour les équipements critiques."
+    },
+    {
+      "pos": "3",
+      "designation": "Câblage Cat6",
+      "reference": "",
+      "manufacturer": "CableTech",
+      "unit": "m",
+      "quantity": 100,
+      "remarks": "Câblage structuré pour une transmission de données fiable."
+    },
+    {
+      "pos": "4",
+      "designation": "Baie de brassage 22U",
+      "reference": "",
+      "manufacturer": "NetRack",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Héberge les équipements réseau de manière ordonnée."
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Switch manageable avec minimum 24 ports et PoE+.",
+      "product_response": "Cisco CBS350-24P-4G avec 24 ports PoE+.",
+      "status": "CONFORME",
+      "remarks": "Répond parfaitement à l'exigence avec PoE+ et VLAN."
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Câblage structuré en Cat6.",
+      "product_response": "Utilisation de câblage Cat6 CableTech.",
+      "status": "CONFORME",
+      "remarks": "Assure une transmission de données rapide et fiable."
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Onduleur avec autonomie minimale de 10 minutes.",
+      "product_response": "Eaton 9PX On-Line Double Conversion UPS.",
+      "status": "CONFORME",
+      "remarks": "Fournit une alimentation continue pour les applications critiques."
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Baie de brassage 19 pouces avec capacité minimale de 20U.",
+      "product_response": "Baie de brassage 22U NetRack.",
+      "status": "CONFORME",
+      "remarks": "Capacité suffisante pour héberger les équipements nécessaires."
+    },
+    {
+      "requirement_id": "REQ-005",
+      "requirement_text": "Supervision SNMP et segmentation VLAN.",
+      "product_response": "Cisco CBS350-24P-4G avec SNMP et VLAN.",
+      "status": "CONFORME",
+      "remarks": "Permet une gestion efficace et sécurisée du réseau."
+    }
+  ],
+  "date": "03/09/2026",
+  "session_id": "session_cecd3acc7815dcfb",
+  "selected_products": [
+    "eaton-eaton-9px-on-line-double-conve",
+    "REF-SW24",
+    "REF-UPS15"
+  ],
+  "total_compliance_rate": 0.85
+}

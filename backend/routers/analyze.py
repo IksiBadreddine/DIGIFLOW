@@ -80,24 +80,30 @@ async def analyze_document(file: UploadFile = File(...)):
         logger.info(f"✅ Document sauvegardé dans PostgreSQL: {doc_id}")
         
         # 7. Indexer dans ChromaDB
+        
+        collection_name = f"cdc_{session_id}"
+        try:
+            # Supprimer l'ancienne collection si elle existe
+            vector_store.delete_collection(collection_name)
+        except:
+            pass
+
         for chunk in doc.chunks:
             try:
                 vector_store.add_document(
                     content=chunk.content,
                     metadata={
-                        "document_id": doc_id,
+                        "document_id": str(doc_id),  # ✅ Convertir en string
                         "document_type": doc.document_type.value,
                         "filename": doc.filename,
                         "chunk_index": chunk.metadata.get("chunk_index", 0),
                         "session_id": session_id,
                         "source": "upload"
                     },
-                    collection=f"cdc_{session_id}"
+                    collection=collection_name
                 )
             except Exception as e:
                 logger.warning(f"Erreur d'indexation d'un chunk: {e}")
-        
-        logger.info(f"✅ Document indexé dans ChromaDB")
         
         # 8. Extraire les exigences avec le LLM
         requirements_result = extract_requirements(doc.full_text)
@@ -154,15 +160,81 @@ async def analyze_document(file: UploadFile = File(...)):
                     context_docs[:2]
                 )
                 
+                # ✅ DÉTECTION DES INCOMPATIBILITÉS
+                incompatibilities = []
+                compliance_rows = match_result.get("compliance_rows", [])
+                
+                for row in compliance_rows:
+                    if row.get("status") == "NON_CONFORME":
+                        # Déterminer la sévérité
+                        severity = "critique"
+                        if "option" in row.get("requirement_text", "").lower() or "peut" in row.get("remarks", "").lower():
+                            severity = "majeure"
+                        
+                        incompatibilities.append({
+                            "requirement_id": row.get("requirement_id"),
+                            "requirement_text": row.get("requirement_text"),
+                            "specified_value": row.get("specified_value"),
+                            "product_response": row.get("product_response"),
+                            "severity": severity,
+                            "reason": row.get("remarks", "Le produit ne répond pas à cette exigence")
+                        })
+                
+                # ✅ SUGGESTION D'ALTERNATIVES
+                alternatives = []
+                if incompatibilities:
+                    # Récupérer les produits alternatifs (tous sauf le produit courant)
+                    other_products = [p for p in products if p.get("product_id") != product.get("product_id")]
+                    
+                    for alt_product in other_products[:3]:  # Limiter à 3 alternatives
+                        try:
+                            alt_dict = {
+                                "id": alt_product.get("product_id", alt_product.get("id")),
+                                "name": alt_product.get("name", ""),
+                                "manufacturer": alt_product.get("manufacturer", ""),
+                                "reference": alt_product.get("reference", ""),
+                                "specs": alt_product.get("specs", {}),
+                                "tags": alt_product.get("tags", [])
+                            }
+                            
+                            # Vérifier si l'alternative répond aux exigences non conformes
+                            alt_result = await loop.run_in_executor(
+                                None,
+                                match_product_compliance,
+                                incompatibilities[:5],  # Seulement les incompatibilités
+                                alt_dict,
+                                []
+                            )
+                            
+                            alt_score = alt_result.get("compliance_score", 0)
+                            
+                            if alt_score >= 0.6:  # Seuil pour proposer comme alternative
+                                alternatives.append({
+                                    "product_id": alt_product.get("product_id"),
+                                    "product_name": alt_product.get("name"),
+                                    "manufacturer": alt_product.get("manufacturer"),
+                                    "reference": alt_product.get("reference"),
+                                    "compliance_score": alt_score,
+                                    "why": f"Ce produit répond à {len([r for r in alt_result.get('compliance_rows', []) if r.get('status') == 'CONFORME'])} exigences non conformes"
+                                })
+                        except Exception as e:
+                            logger.warning(f"Erreur d'alternative pour {alt_product.get('name')}: {e}")
+                    
+                    # Trier par score
+                    alternatives.sort(key=lambda x: x.get("compliance_score", 0), reverse=True)
+                    alternatives = alternatives[:2]  # Top 2 alternatives
+                
                 return {
                     "product_id": match_result.get("product_id", product_dict.get("id")),
                     "product_name": match_result.get("product_name", product_dict.get("name")),
                     "manufacturer": match_result.get("manufacturer", product_dict.get("manufacturer")),
                     "reference": match_result.get("reference", product_dict.get("reference")),
                     "compliance_score": match_result.get("compliance_score", 0.5),
-                    "compliance_rows": match_result.get("compliance_rows", []),
+                    "compliance_rows": compliance_rows,
                     "strengths": match_result.get("strengths", ["Produit disponible"]),
-                    "gaps": match_result.get("gaps", ["Vérification requise"])
+                    "gaps": match_result.get("gaps", ["Vérification requise"]),
+                    "incompatibilities": incompatibilities,  # ✅ AJOUTÉ
+                    "alternatives": alternatives  # ✅ AJOUTÉ
                 }
                 
             except Exception as e:
@@ -171,10 +243,13 @@ async def analyze_document(file: UploadFile = File(...)):
                     "product_id": product.get("product_id"),
                     "product_name": product.get("name"),
                     "manufacturer": product.get("manufacturer"),
+                    "reference": product.get("reference"),
                     "compliance_score": 0.3,
                     "compliance_rows": [],
                     "strengths": ["Produit disponible"],
-                    "gaps": ["Erreur de matching"]
+                    "gaps": ["Erreur de matching"],
+                    "incompatibilities": [],  # ✅ AJOUTÉ
+                    "alternatives": []  # ✅ AJOUTÉ
                 }
 
         # ✅ Traiter par lots de 2

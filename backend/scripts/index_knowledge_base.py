@@ -8,6 +8,11 @@ import sys
 import logging
 from pathlib import Path
 
+from dotenv import load_dotenv  # ✅ AJOUTER
+
+# ✅ Charger les variables d'environnement
+load_dotenv()
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ingestion import DocumentProcessor

@@ -19,6 +19,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,22 +35,60 @@ def get_llm(temperature: float = 0.1) -> ChatOllama:
     """
     Returns the configured local LLM with optimized parameters.
     """
-    provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
 
-    if provider != "ollama":
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+        # ✅ Utiliser OpenAI par défaut
+    if provider == "openai":
+        return ChatOpenAI(
+            model=os.getenv("LLM_MODEL", "gpt-4o"),
+            temperature=temperature,
+            api_key=os.getenv("OPENAI_API_KEY"),
+            timeout=120,  # 2 minutes
+            max_retries=3,
+        )
+    
+    # Fallback sur Ollama si spécifié
+    elif provider == "ollama":
+        from langchain_ollama import ChatOllama
+        return ChatOllama(
+            model=os.getenv("LLM_MODEL", "qwen2.5:7b"),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            temperature=temperature,
+        )
+    
+    else:
+        raise ValueError(f"Provider non supporté: {provider}")
 
-    return ChatOllama(
-        model=os.getenv("LLM_MODEL", "qwen2.5:7b"),
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        temperature=temperature,
-        num_predict=8192,     # ✅ Maximum tokens à générer (pour les longs CDC)
-        num_ctx=16384,        # ✅ Contexte de 16K tokens
-        repeat_penalty=1.1,   # ✅ Évite les répétitions
-        top_k=40,            # ✅ Qualité de génération
-        top_p=0.9,           # ✅ Qualité de génération
-    )
-
+def get_embeddings():
+    """
+    Returns the configured embeddings (OpenAI)
+    """
+    provider = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
+    
+    if provider == "openai":
+        return OpenAIEmbeddings(
+            model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+    
+    elif provider == "huggingface":
+        # Garder Hugging Face comme fallback
+        from sentence_transformers import SentenceTransformer
+        
+        class HuggingFaceEmbeddingFunction:
+            def __init__(self, model_name):
+                self.model = SentenceTransformer(model_name)
+                self.model_name = model_name
+            
+            def __call__(self, texts):
+                if isinstance(texts, str):
+                    texts = [texts]
+                return self.model.encode(texts).tolist()
+        
+        return HuggingFaceEmbeddingFunction(os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"))
+    
+    else:
+        raise ValueError(f"Provider embeddings non supporté: {provider}")
 
 # ============================================================
 # JSON Helper - Version robuste
@@ -226,7 +267,7 @@ Compare les exigences du cahier des charges avec les caractéristiques du produi
 ⚠️ RÈGLES STRICTES DE SCORING :
 1. **CONFORME (100%)** : Le produit répond EXACTEMENT à l'exigence. Aucun écart.
    - Exemple : "24 ports" → produit a "24 ports Gigabit Ethernet"
-   
+    
 2. **PARTIEL (50%)** : Le produit répond PARTIELLEMENT à l'exigence.
    - Exemple : "24 ports" → produit a "16 ports" ou "8 ports PoE + 8 ports non PoE"
    - Exemple : "PoE+ 370W" → produit a "PoE 150W"
@@ -284,6 +325,11 @@ Compare les exigences du cahier des charges avec les caractéristiques du produi
     "Non compatible avec le stacking"
   ]
 }}
+
+🔍 POUR CHAQUE PRODUIT, IDENTIFIE :
+1. Les exigences NON_CONFORME → Incompatibilités
+2. Les exigences PARTIEL → Points d'attention
+3. Les exigences CONFORME → Points forts
 
 🔍 CRITÈRES D'ÉVALUATION :
 
@@ -381,42 +427,52 @@ OFFER_PROMPT = ChatPromptTemplate.from_messages([
         "system",
         """Tu es un ingénieur avant-vente senior spécialisé ICT, ELV et Télécom.
 
-Génère une offre technique professionnelle et complète.
+Génère une offre technique professionnelle, complète et personnalisée.
 
 ⚠️ RÈGLES :
 1. Réponds UNIQUEMENT en JSON
-2. Offre structurée et professionnelle
-3. Justifie chaque choix technique
+2. L'offre doit être ADAPTÉE au projet (pas générique)
+3. Justifie chaque choix technique avec des arguments précis
+4. Utilise le CONTEXTE RAG pour enrichir l'offre
+5. Le BOQ est estimatif (quantités seulement, sans prix unitaire)
 
-Structure JSON obligatoire :
+📋 STRUCTURE OBLIGATOIRE :
 
 {{
-  "title": "Offre Technique - Nom du Projet",
+  "title": "Offre Technique - [Nom du Projet]",
   "reference": "REF-XXXXX",
   "sections": [
     {{
       "title": "1. Introduction",
-      "content": "Texte complet de l'introduction..."
+      "content": "Présentation de la société, contexte du projet, objectifs..."
     }},
     {{
       "title": "2. Compréhension du Besoin",
-      "content": "Analyse détaillée du besoin..."
+      "content": "Analyse détaillée des besoins du client, exigences clés..."
     }},
     {{
-      "title": "3. Solution Technique",
-      "content": "Description de la solution..."
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "Liste structurée des exigences techniques identifiées..."
     }},
     {{
-      "title": "4. Équipements Proposés",
-      "content": "Détail des équipements..."
+      "title": "4. Solution Technique Proposée",
+      "content": "Description de la solution, architecture, composants..."
     }},
     {{
-      "title": "5. Architecture",
-      "content": "Description de l'architecture..."
+      "title": "5. Équipements et Matériels",
+      "content": "Détail des équipements proposés avec justifications..."
     }},
     {{
-      "title": "6. Justification des Choix",
-      "content": "Justification technique..."
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "Description de l'architecture réseau, câblage, topologie..."
+    }},
+    {{
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Planning, phases d'installation, tests et recettes..."
+    }},
+    {{
+      "title": "8. Tableau de Conformité",
+      "content": "Tableau détaillé de conformité (exigence → réponse → statut)"
     }}
   ],
   "boq": [
@@ -427,11 +483,26 @@ Structure JSON obligatoire :
       "manufacturer": "Fabricant",
       "unit": "U",
       "quantity": 1,
-      "unit_price_eur": 0,
       "remarks": "Commentaire"
+    }}
+  ],
+  "compliance_table": [
+    {{
+      "requirement_id": "REQ-001",
+      "requirement_text": "Texte de l'exigence",
+      "product_response": "Réponse du produit",
+      "status": "CONFORME|PARTIEL|NON_CONFORME",
+      "remarks": "Justification"
     }}
   ]
 }}
+
+📌 CONSIGNES SPÉCIFIQUES :
+- L'introduction doit être personnalisée avec les informations du projet
+- La solution technique doit justifier chaque choix
+- Le BOQ est estimatif (quantités uniquement, PAS de prix)
+- Le tableau de conformité doit lister chaque exigence avec son statut
+- Utilise le CONTEXTE RAG pour enrichir l'offre
 
 Génère l'offre COMPLÈTE maintenant :
 """,
@@ -439,21 +510,25 @@ Génère l'offre COMPLÈTE maintenant :
     (
         "human",
         """
-RÉSUMÉ DU BESOIN :
+📋 RÉSUMÉ DU BESOIN :
 
 {summary}
 
-CONTRAINTES CLÉS :
+🔒 CONTRAINTES CLÉS :
 
 {constraints}
 
-PRODUITS SÉLECTIONNÉS :
+📦 PRODUITS SÉLECTIONNÉS :
 
 {products_json}
 
-TAUX DE CONFORMITÉ :
+📊 TAUX DE CONFORMITÉ :
 
 {compliance_rate} %
+
+📚 CONTEXTE RAG (documents pertinents) :
+
+{context}
 
 ➡️ GÉNÈRE L'OFFRE TECHNIQUE COMPLÈTE EN JSON :
 """,
@@ -461,20 +536,41 @@ TAUX DE CONFORMITÉ :
 ])
 
 
+# backend/services/llm_service.py
+
 def generate_offer(
     summary: str,
     constraints: List[str],
     products: List[Dict[str, Any]],
     compliance_rate: float,
+    requirements: List[Dict] = None,  # ✅ AJOUTER
+    context_docs: List[Dict] = None   # ✅ AJOUTER
 ) -> Dict[str, Any]:
     """
-    Generates a complete technical offer.
+    Generates a complete technical offer with RAG context and compliance table.
     """
     logger.info("Génération de l'offre technique")
     
     # Préparer les données
     products_text = json.dumps(products[:5], ensure_ascii=False, indent=2)[:3000]
     constraints_text = "\n".join(f"- {c}" for c in constraints[:10])
+    
+    # ✅ PRÉPARER LE CONTEXTE RAG
+    context_text = ""
+    if context_docs:
+        context_text = "Documents techniques pertinents :\n"
+        for doc in context_docs[:3]:
+            content = doc.get("content", "")[:500]
+            if content:
+                context_text += f"\n---\n{content}\n"
+    
+    # ✅ PRÉPARER LES EXIGENCES POUR LE TABLEAU DE CONFORMITÉ
+    requirements_text = ""
+    if requirements:
+        requirements_text = "\n".join([
+            f"- {r.get('id')}: {r.get('description', '')[:100]}"
+            for r in requirements[:10]
+        ])
     
     llm = get_llm(temperature=0.3)
     chain = OFFER_PROMPT | llm | StrOutputParser()
@@ -485,10 +581,105 @@ def generate_offer(
             "constraints": constraints_text,
             "products_json": products_text,
             "compliance_rate": round(compliance_rate * 100, 1),
+            "context": context_text,
+            "requirements": requirements_text  # ✅ AJOUTER
         })
         
         logger.info(f"Réponse offre reçue: {len(raw)} caractères")
-        return clean_json_response(raw)
+        result = clean_json_response(raw)
+        
+        # ✅ AJOUTER LE TABLEAU DE CONFORMITÉ SI ABSENT
+        if not result.get("compliance_table") and requirements:
+            result["compliance_table"] = [
+                {
+                    "requirement_id": req.get("id"),
+                    "requirement_text": req.get("description", ""),
+                    "product_response": "Voir les produits sélectionnés",
+                    "status": "À vérifier",
+                    "remarks": "Vérifier la conformité avec les produits proposés"
+                }
+                for req in requirements[:8]
+            ]
+        
+        return result
+        
     except Exception as e:
         logger.error(f"Erreur lors de la génération de l'offre: {e}")
         raise
+
+
+def detect_incompatibilities(requirements: list, product: dict, match_result: dict) -> list:
+    """
+    Détecte les incompatibilités entre le produit et les exigences
+    """
+    incompatibilities = []
+    
+    compliance_rows = match_result.get("compliance_rows", [])
+    
+    for row in compliance_rows:
+        if row.get("status") == "NON_CONFORME":
+            incompatibilities.append({
+                "requirement_id": row.get("requirement_id"),
+                "requirement_text": row.get("requirement_text"),
+                "specified_value": row.get("specified_value"),
+                "product_response": row.get("product_response"),
+                "remarks": row.get("remarks", "Le produit ne répond pas à cette exigence"),
+                "severity": "critique"  # ou "majeure" / "mineure"
+            })
+    
+    return incompatibilities
+
+def suggest_alternatives(
+    requirements: list,
+    current_product: dict,
+    all_products: list,
+    match_result: dict
+) -> list:
+    """
+    Suggère des produits alternatifs pour les exigences non conformes
+    """
+    alternatives = []
+    
+    # Récupérer les exigences non conformes
+    compliance_rows = match_result.get("compliance_rows", [])
+    non_conform_rows = [r for r in compliance_rows if r.get("status") == "NON_CONFORME"]
+    
+    if not non_conform_rows:
+        return alternatives
+    
+    # Pour chaque produit alternatif
+    for product in all_products:
+        if product.get("id") == current_product.get("id"):
+            continue  # Ignorer le produit actuel
+        
+        # Vérifier si ce produit répond aux exigences non conformes
+        try:
+            alt_result = match_product_compliance(
+                requirements=non_conform_rows,
+                product=product,
+                context_docs=[]
+            )
+            
+            alt_score = alt_result.get("compliance_score", 0)
+            
+            # Si le score est bon, suggérer comme alternative
+            if alt_score >= 0.7:
+                alternatives.append({
+                    "product_id": product.get("id"),
+                    "product_name": product.get("name"),
+                    "manufacturer": product.get("manufacturer"),
+                    "reference": product.get("reference"),
+                    "compliance_score": alt_score,
+                    "addressed_requirements": [
+                        r.get("requirement_id") for r in alt_result.get("compliance_rows", [])
+                        if r.get("status") == "CONFORME"
+                    ],
+                    "why": f"Ce produit répond à {len([r for r in alt_result.get('compliance_rows', []) if r.get('status') == 'CONFORME'])} exigences non conformes"
+                })
+        except Exception as e:
+            logger.warning(f"Erreur d'alternative pour {product.get('name')}: {e}")
+    
+    # Trier par score
+    alternatives.sort(key=lambda x: x.get("compliance_score", 0), reverse=True)
+    
+    return alternatives[:3]  # Top 3 alternatives

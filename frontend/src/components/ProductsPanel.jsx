@@ -77,6 +77,46 @@ const s = {
     fontSize: 14, background: '#fff5f5', borderRadius: 8,
     border: '1px solid #fc8181',
   },
+  incompatibilities: {
+    padding: '10px 20px',
+    background: '#fff5f5',
+    borderTop: '1px solid #fc8181',
+    fontSize: 13,
+  },
+  incompatTitle: {
+    fontWeight: 700,
+    color: '#c53030',
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  incompatItem: {
+    padding: '2px 0',
+    fontSize: 12,
+    color: '#c53030',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  alternatives: {
+    padding: '10px 20px',
+    background: '#ebf8ff',
+    borderTop: '1px solid #90cdf4',
+    fontSize: 13,
+  },
+  altTitle: {
+    fontWeight: 700,
+    color: '#2b6cb0',
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  altItem: {
+    padding: '2px 0',
+    fontSize: 12,
+    color: '#2b6cb0',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
 }
 
 function StatusIcon({ status }) {
@@ -88,6 +128,11 @@ function StatusIcon({ status }) {
 function ProductCard({ product, selected, onToggle }) {
   const [showDetail, setShowDetail] = useState(false)
   const pct = Math.round(product.compliance_score * 100)
+
+  // ✅ Compter les incompatibilités critiques
+  const criticalIncompatibilities = product.incompatibilities?.filter(
+    inc => inc.severity === 'critique'
+  ) || []
 
   return (
     <div style={s.card(selected)} onClick={onToggle}>
@@ -104,6 +149,48 @@ function ProductCard({ product, selected, onToggle }) {
         )}
       </div>
 
+      {/* ✅ AFFICHER LES INCOMPATIBILITÉS CRITIQUES */}
+      {criticalIncompatibilities.length > 0 && (
+        <div style={s.incompatibilities}>
+          <div style={s.incompatTitle}>🚨 Incompatibilités critiques ({criticalIncompatibilities.length})</div>
+          {criticalIncompatibilities.slice(0, 3).map((inc, i) => (
+            <div key={i} style={s.incompatItem}>
+              <span>•</span>
+              <span>
+                <strong>{inc.requirement_id}</strong>: {inc.requirement_text}
+                <span style={{ display: 'block', fontSize: 11, color: '#9b2c2c' }}>
+                  {inc.reason || 'Le produit ne répond pas à cette exigence'}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ✅ AFFICHER LES ALTERNATIVES */}
+      {product.alternatives?.length > 0 && (
+        <div style={s.alternatives}>
+          <div style={s.altTitle}>💡 Alternatives suggérées</div>
+          {product.alternatives.slice(0, 3).map((alt, i) => (
+            <div key={i} style={s.altItem}>
+              <span>•</span>
+              <span>
+                <strong>{alt.product_name}</strong> ({alt.manufacturer})
+                {alt.compliance_score && (
+                  <span style={{ marginLeft: 8, color: '#2f855a' }}>
+                    Score: {Math.round(alt.compliance_score * 100)}%
+                  </span>
+                )}
+                <span style={{ display: 'block', fontSize: 11, color: '#2b6cb0' }}>
+                  {alt.why || 'Alternative recommandée'}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* POINTS FORTS */}
       {product.strengths?.length > 0 && (
         <div style={s.strengths}>
           {product.strengths.slice(0, 2).map((s_, i) => (
@@ -115,6 +202,7 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
+      {/* ÉCARTS */}
       {product.gaps?.length > 0 && (
         <div style={s.gaps}>
           {product.gaps.slice(0, 2).map((g, i) => (
@@ -126,12 +214,14 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
+      {/* BOUTON TABLEAU DE CONFORMITÉ */}
       <button style={s.detailBtn}
         onClick={e => { e.stopPropagation(); setShowDetail(v => !v) }}>
         {showDetail ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         Voir le tableau de conformité ({product.compliance_rows?.length || 0} critères)
       </button>
 
+      {/* TABLEAU DE CONFORMITÉ */}
       {showDetail && product.compliance_rows?.length > 0 && (
         <div style={{ overflowX: 'auto', padding: '0 20px 16px' }} onClick={e => e.stopPropagation()}>
           <table style={s.table}>
@@ -192,6 +282,18 @@ export default function ProductsPanel({ sessionId, requirements, onGenerate, gen
       setLoading(false)
     }
   }
+
+  const handleGenerate = () => {
+    if (selected.length === 0) {
+      alert('Veuillez sélectionner au moins un produit');
+      return;
+    }
+    
+    // ✅ Appeler onGenerate directement, sans setGenerating
+    // La gestion du chargement se fait dans App.jsx
+    onGenerate(selected);
+  };
+
 
   // Fonction de matching simple
   const getMatchedProducts = () => {
@@ -355,7 +457,7 @@ export default function ProductsPanel({ sessionId, requirements, onGenerate, gen
             opacity: selected.length === 0 ? 0.6 : 1,
             cursor: selected.length === 0 ? 'not-allowed' : 'pointer'
           }}
-          onClick={() => onGenerate(selected)}
+          onClick={handleGenerate}
           disabled={generating || selected.length === 0}
         >
           {generating

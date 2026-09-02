@@ -5,9 +5,15 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime
+
+
+from services.llm_service import generate_offer
+from services.vector_store import VectorStore
+from services.product_service import ProductService
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,67 +22,109 @@ logger = logging.getLogger(__name__)
 class GenerateOfferRequest(BaseModel):
     session_id: str
     selected_product_ids: Optional[List[str]] = None
+    requirements: Optional[List[Dict[str, Any]]] = [] 
 
 
 @router.post("/api/generate-offer")
-async def generate_offer(request: GenerateOfferRequest):
+async def generate_offer_endpoint(request: GenerateOfferRequest):
     """
     Génère une offre technique à partir des produits sélectionnés
+    avec contexte RAG et tableau de conformité intégré
     """
     logger.info(f"📋 Génération d'offre pour session: {request.session_id}")
     
-    # Simuler une offre
-    offer_data = {
-        "title": "Offre Technique - Projet Client",
-        "reference": f"REF-{request.session_id[:8].upper()}",
-        "date": datetime.now().strftime("%d/%m/%Y"),
-        "sections": [
-            {
-                "title": "1. Introduction",
-                "content": "Nous vous proposons une solution technique complète répondant à vos besoins."
-            },
-            {
-                "title": "2. Compréhension du Besoin",
-                "content": "Le système doit fournir une connectivité réseau fiable..."
-            },
-            {
-                "title": "3. Solution Technique",
-                "content": "La solution proposée comprend les équipements suivants..."
-            }
-        ],
-        "boq": [
-            {
-                "pos": "1",
-                "designation": "Switch Cisco CBS350-24P-4G",
-                "reference": "CBS350-24P-4G",
-                "manufacturer": "Cisco",
-                "unit": "U",
-                "quantity": 1,
-                "unit_price_eur": 1500,
-                "remarks": "Switch manageable 24 ports PoE+"
-            }
-        ],
-        "compliance_table": [
-            {
-                "requirement_id": "REQ-001",
-                "requirement_text": "Switch 24 ports PoE+",
-                "specified_value": "24 ports PoE+",
-                "product_response": "24 ports PoE+",
-                "status": "CONFORME",
-                "remarks": "OK"
-            }
-        ],
-        "total_compliance_rate": 0.85,
-        "selected_products": request.selected_product_ids or []
-    }
-    
-    # Sauvegarder l'offre
-    os.makedirs("data/offers", exist_ok=True)
-    json_path = f"data/offers/{request.session_id}.json"
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(offer_data, f, ensure_ascii=False, indent=2)
-    
-    return JSONResponse(offer_data)
+    try:
+        # ✅ Récupérer les données
+        requirements = request.requirements or []
+        selected_ids = request.selected_product_ids or []
+        
+        logger.info(f"✅ {len(requirements)} exigences reçues")
+        logger.info(f"✅ {len(selected_ids)} produits sélectionnés")
+        
+        # 1. Récupérer les produits sélectionnés
+        product_service = ProductService()
+        all_products = product_service.get_all_products()
+        
+        # ✅ CORRECTION : Filtrer avec les deux formats possibles
+        selected_products = []
+        for p in all_products:
+            p_id = p.get("product_id") or p.get("id")
+            # Vérifier si l'ID correspond
+            if p_id in selected_ids:
+                selected_products.append(p)
+            else:
+                # Vérifier si l'ID commence par le préfixe
+                for sid in selected_ids:
+                    if sid.startswith(p_id[:10]) or p_id.startswith(sid[:10]):
+                        selected_products.append(p)
+                        break
+        
+        # Si aucun produit trouvé, utiliser les IDs directs
+        if not selected_products:
+            logger.warning(f"⚠️ Aucun produit trouvé pour les IDs: {selected_ids}")
+            # Essayer de récupérer par ID direct
+            for p in all_products:
+                if p.get("id") in selected_ids:
+                    selected_products.append(p)
+        
+        if not selected_products:
+            raise HTTPException(status_code=400, detail="Aucun produit trouvé")
+        
+        logger.info(f"✅ {len(selected_products)} produits sélectionnés")
+        
+        # 2. Récupérer le contexte RAG
+        vector_store = VectorStore()
+        context_docs = []
+        if requirements:
+            query = " ".join([r.get("description", "") for r in requirements[:3]])
+            logger.info(f"🔍 Recherche RAG: {query[:100]}...")
+            
+            context_results = vector_store.search(
+                query=query,
+                collection="knowledge_base",
+                n_results=3
+            )
+            context_docs = [
+                {"content": r.get("content", ""), "metadata": r.get("metadata", {})}
+                for r in context_results
+            ]
+            logger.info(f"✅ {len(context_docs)} documents RAG trouvés")
+        
+        # 3. Calculer le taux de conformité (à améliorer avec les scores réels)
+        compliance_rate = 0.85
+        
+        # 4. Générer l'offre avec l'IA
+        offer_data = generate_offer(
+            summary="Projet d'installation réseau d'entreprise",
+            constraints=["Respect des normes", "Délai de 2 semaines"],
+            products=selected_products,
+            compliance_rate=compliance_rate,
+            requirements=requirements,  # ✅ UTILISER LES EXIGENCES
+            context_docs=context_docs
+        )
+        
+        # 5. Ajouter les métadonnées
+        offer_data["reference"] = f"REF-{request.session_id[:8].upper()}"
+        offer_data["date"] = datetime.now().strftime("%d/%m/%Y")
+        offer_data["session_id"] = request.session_id
+        offer_data["selected_products"] = request.selected_product_ids or []
+        offer_data["total_compliance_rate"] = compliance_rate
+        
+        # 6. Sauvegarder l'offre
+        os.makedirs("data/offers", exist_ok=True)
+        json_path = f"data/offers/{request.session_id}.json"
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(offer_data, f, ensure_ascii=False, indent=2)
+        
+        product_service.close()
+        
+        return JSONResponse(offer_data)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur de génération d'offre: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/export/{session_id}")

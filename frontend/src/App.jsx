@@ -115,18 +115,27 @@ export default function App() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  function handleAnalysis(result) {
-    setSessionId(result.session_id)
-    setAnalysis(result.analysis)
-    setStep(1)
-    setError('')
-  }
+  const handleAnalysis = (result) => {
+    console.log('📥 Analyse reçue dans App:', result);
+    
+    // ✅ Vérifier que les données sont valides
+    if (result && result.analysis) {
+      setAnalysis(result.analysis);
+      setSessionId(result.session_id);
+      setStep(1); // ✅ CORRIGÉ : setStep au lieu de setCurrentStep
+    } else {
+      console.error('❌ Données d\'analyse invalides:', result);
+      setError('Erreur lors de l\'analyse du document');
+    }
+  };
 
   async function handleGenerate(selectedIds) {
     setGenerating(true)
     setError('')
     try {
-      const data = await generateOffer(sessionId, selectedIds)
+      // ✅ Passer les exigences au backend
+      const requirements = analysis?.extracted_requirements || [];
+      const data = await generateOffer(sessionId, selectedIds, requirements);
       setOffer(data)
       setStep(3)
     } catch (e) {
@@ -272,12 +281,12 @@ export default function App() {
 
         {/* STEP 2 — Products */}
         {step === 2 && analysis && (
-        <ProductsPanel 
-          sessionId={sessionId}
-          requirements={analysis?.extracted_requirements || []}
-          onGenerate={handleGenerate}  // ← Changé ici
-          generating={generating}
-        />
+          <ProductsPanel 
+            sessionId={sessionId}
+            requirements={analysis?.extracted_requirements || []}
+            onGenerate={handleGenerate}  // ✅ CORRIGÉ : handleGenerate au lieu de handleGenerateOffer
+            generating={generating}
+          />
         )}
 
         {/* STEP 3 — Offer */}
