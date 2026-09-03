@@ -1,0 +1,112 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, est ravie de soumettre cette offre technique pour le projet d'installation réseau d'entreprise. Ce projet vise à mettre en place une infrastructure réseau robuste et conforme aux normes, avec un délai d'exécution de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une infrastructure réseau qui supporte la vidéosurveillance, la gestion de VLAN, et l'alimentation PoE pour les périphériques réseau. Les contraintes incluent le respect des normes et un délai d'exécution serré."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "Les exigences techniques incluent : résolution caméra minimale de 4 MP, nombre de ports switch minimal de 24, catégorie de câblage Cat6, autonomie onduleur minimale de 10 minutes, et capacité de baie minimale de 20U."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "Nous proposons une solution intégrant des caméras IP Dôme Hikvision pour la vidéosurveillance, un switch Cisco CBS350-24P-4G pour la gestion réseau et l'alimentation PoE, ainsi qu'un onduleur APC Smart-UPS SMT1500IC pour garantir la continuité électrique. Cette architecture assure une gestion efficace des ressources réseau et une sécurité accrue."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Les caméras Hikvision DS-2CD2143G2-I sont choisies pour leur résolution 4 MP et leur robustesse (IP67/IK10). Le switch Cisco CBS350-24P-4G est sélectionné pour sa capacité à gérer jusqu'à 4094 VLANs et son budget PoE de 195 W. L'onduleur APC Smart-UPS SMT1500IC est recommandé pour son autonomie de 10 à 15 minutes et sa capacité à protéger les équipements critiques."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "L'architecture réseau repose sur un câblage Cat6 pour garantir des performances optimales. Le switch Cisco gère la distribution PoE et la segmentation réseau via VLAN. La topologie est conçue pour une évolutivité future tout en assurant une gestion centralisée et sécurisée."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Le projet sera exécuté en phases : 1) Planification et préparation, 2) Installation des équipements, 3) Configuration et tests, 4) Formation et remise des documents. Chaque phase est conçue pour respecter le délai de 2 semaines."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau de conformité ci-dessous détaille comment chaque exigence est adressée par notre solution."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Caméra IP Dôme DS-2CD2143G2-I",
+      "reference": "REF-CAM4MP",
+      "manufacturer": "Hikvision",
+      "unit": "U",
+      "quantity": 10,
+      "remarks": "Pour la vidéosurveillance extérieure"
+    },
+    {
+      "pos": "2",
+      "designation": "Switch Manageable PoE+ CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 2,
+      "remarks": "Pour la gestion réseau et l'alimentation PoE"
+    },
+    {
+      "pos": "3",
+      "designation": "Smart-UPS SMT1500IC",
+      "reference": "REF-UPS15",
+      "manufacturer": "APC",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Pour la continuité électrique"
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Résolution caméra minimale : 4 MP",
+      "product_response": "Caméra Hikvision DS-2CD2143G2-I offre 4 MP",
+      "status": "CONFORME",
+      "remarks": "Répond à l'exigence de résolution"
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Nombre de ports switch minimal : 24",
+      "product_response": "Switch Cisco CBS350-24P-4G offre 24 ports",
+      "status": "CONFORME",
+      "remarks": "Répond à l'exigence de connectivité"
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Catégorie de câblage : Cat6",
+      "product_response": "Câblage structuré Cat6 proposé",
+      "status": "CONFORME",
+      "remarks": "Assure des performances réseau optimales"
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Autonomie onduleur minimale : 10 minutes",
+      "product_response": "Onduleur APC SMT1500IC offre 10-15 minutes",
+      "status": "CONFORME",
+      "remarks": "Assure la continuité électrique requise"
+    },
+    {
+      "requirement_id": "REQ-005",
+      "requirement_text": "Capacité baie minimale : 20U",
+      "product_response": "Solution compatible avec baie 19 pouces",
+      "status": "CONFORME",
+      "remarks": "Adapté à l'infrastructure existante"
+    }
+  ],
+  "date": "03/09/2026",
+  "session_id": "session_5436eecbc1e4cf2f",
+  "selected_products": [
+    "REF-SW24",
+    "REF-UPS15",
+    "REF-CAM4MP"
+  ],
+  "total_compliance_rate": 0.85
+}

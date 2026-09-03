@@ -117,13 +117,13 @@ async def analyze_document(file: UploadFile = File(...)):
         # 10. Recherche dans ChromaDB pour le contexte RAG
         context_docs = []
         if requirements:
-            query = " ".join([req.get("description", "") for req in requirements[:5]])
+            query = " ".join([req.get("description", "") for req in requirements])
             logger.info(f"🔍 Recherche RAG: {query[:100]}...")
             
             context_results = vector_store.search(
                 query=query,
                 collection="knowledge_base",
-                n_results=4
+                n_results=10
             )
             
             for r in context_results:
@@ -155,9 +155,9 @@ async def analyze_document(file: UploadFile = File(...)):
                 match_result = await loop.run_in_executor(
                     None,
                     match_product_compliance,
-                    requirements[:8],
+                    requirements,
                     product_dict,
-                    context_docs[:2]
+                    context_docs
                 )
                 
                 # ✅ DÉTECTION DES INCOMPATIBILITÉS
@@ -253,6 +253,7 @@ async def analyze_document(file: UploadFile = File(...)):
                 }
 
         # ✅ Traiter par lots de 2
+        # ✅ Traiter par lots de 2
         batch_size = 2
         all_matched = []
 
@@ -271,9 +272,54 @@ async def analyze_document(file: UploadFile = File(...)):
 
         matched_products = all_matched
 
+        # ✅ CORRECTION : FORCER LE SCORE À 0 POUR LES PRODUITS SANS EXIGENCES APPLICABLES
+        # ============================================================
+        for product in matched_products:
+            compliance_rows = product.get('compliance_rows', [])
+            applicable_rows = [r for r in compliance_rows if r.get('status') != 'NON_APPLICABLE']
+            
+            if not applicable_rows:
+                # ✅ AUCUNE EXIGENCE APPLICABLE → SCORE = 0%
+                logger.info(f"⚠️ Aucune exigence applicable pour {product.get('product_name')} → Score forcé à 0%")
+                product["compliance_score"] = 0.0
+                product["strengths"] = ["Produit disponible dans le catalogue"]
+                product["gaps"] = ["Aucune exigence ne correspond à ce type de produit"]
+            else:
+                # ✅ RECALCULER LE SCORE SI BESOIN (le LLM l'a déjà fait, mais on vérifie)
+                total_score = sum(r.get('score', 0) for r in applicable_rows)
+                calculated_score = total_score / len(applicable_rows)
+                # Si le score du LLM est différent, on le corrige
+                if abs(product.get("compliance_score", 0) - calculated_score) > 0.01:
+                    logger.info(f"🔄 Correction du score pour {product.get('product_name')}: {product.get('compliance_score')} → {calculated_score}")
+                    product["compliance_score"] = calculated_score
+
         # Trier par score
         matched_products.sort(key=lambda x: x.get("compliance_score", 0), reverse=True)
-        logger.info(f"✅ Matching terminé: {len(matched_products)} produits évalués")
+
+        # ============================================================
+        # 🔍 LOG DE LA RÉPONSE DU BACKEND
+        # ============================================================
+        logger.info("=" * 60)
+        logger.info("📤 RÉPONSE DU BACKEND AU FRONTEND")
+        logger.info("=" * 60)
+        logger.info(f"Session ID: {session_id}")
+        logger.info(f"Produits matchés: {len(matched_products)}")
+
+        for idx, p in enumerate(matched_products):
+            logger.info(f"\n📦 Produit {idx+1}: {p.get('product_name', 'N/A')}")
+            logger.info(f"   Score: {p.get('compliance_score', 0)}")
+            logger.info(f"   Référence: {p.get('reference', 'N/A')}")
+            
+            # Compter les statuts
+            rows = p.get('compliance_rows', [])
+            applicable = [r for r in rows if r.get('status') != 'NON_APPLICABLE']
+            conformes = [r for r in applicable if r.get('status') == 'CONFORME']
+            logger.info(f"   Statuts: {len(conformes)} CONFORME, {len(applicable) - len(conformes)} non CONFORME, {len(rows) - len(applicable)} NON_APPLICABLE")
+            
+            for row in rows[:4]:  # Afficher les 4 premières lignes
+                logger.info(f"      {row.get('requirement_id')}: {row.get('product_response', 'N/A')[:50]} → {row.get('status')}")
+
+        logger.info("=" * 60)
         
         # 12. Construire la réponse
         return JSONResponse({
@@ -286,9 +332,11 @@ async def analyze_document(file: UploadFile = File(...)):
                 "key_constraints": requirements_result.get("key_constraints", []),
                 "chunks_count": len(doc.chunks),
                 "characters_count": len(doc.full_text),
-                "recommended_products": matched_products[:5]  # Top 5 produits
+                "recommended_products": matched_products  # ✅ DOIT EXISTER
             }
         })
+
+        
         
     except HTTPException:
         raise

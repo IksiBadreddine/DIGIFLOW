@@ -129,7 +129,6 @@ function ProductCard({ product, selected, onToggle }) {
   const [showDetail, setShowDetail] = useState(false)
   const pct = Math.round(product.compliance_score * 100)
 
-  // ✅ Compter les incompatibilités critiques
   const criticalIncompatibilities = product.incompatibilities?.filter(
     inc => inc.severity === 'critique'
   ) || []
@@ -149,7 +148,6 @@ function ProductCard({ product, selected, onToggle }) {
         )}
       </div>
 
-      {/* ✅ AFFICHER LES INCOMPATIBILITÉS CRITIQUES */}
       {criticalIncompatibilities.length > 0 && (
         <div style={s.incompatibilities}>
           <div style={s.incompatTitle}>🚨 Incompatibilités critiques ({criticalIncompatibilities.length})</div>
@@ -167,7 +165,6 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
-      {/* ✅ AFFICHER LES ALTERNATIVES */}
       {product.alternatives?.length > 0 && (
         <div style={s.alternatives}>
           <div style={s.altTitle}>💡 Alternatives suggérées</div>
@@ -190,7 +187,6 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
-      {/* POINTS FORTS */}
       {product.strengths?.length > 0 && (
         <div style={s.strengths}>
           {product.strengths.slice(0, 2).map((s_, i) => (
@@ -202,7 +198,6 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
-      {/* ÉCARTS */}
       {product.gaps?.length > 0 && (
         <div style={s.gaps}>
           {product.gaps.slice(0, 2).map((g, i) => (
@@ -214,14 +209,12 @@ function ProductCard({ product, selected, onToggle }) {
         </div>
       )}
 
-      {/* BOUTON TABLEAU DE CONFORMITÉ */}
       <button style={s.detailBtn}
         onClick={e => { e.stopPropagation(); setShowDetail(v => !v) }}>
         {showDetail ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         Voir le tableau de conformité ({product.compliance_rows?.length || 0} critères)
       </button>
 
-      {/* TABLEAU DE CONFORMITÉ */}
       {showDetail && product.compliance_rows?.length > 0 && (
         <div style={{ overflowX: 'auto', padding: '0 20px 16px' }} onClick={e => e.stopPropagation()}>
           <table style={s.table}>
@@ -235,7 +228,7 @@ function ProductCard({ product, selected, onToggle }) {
             </thead>
             <tbody>
               {product.compliance_rows.map((row, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f7fafc' }}>
+                <tr key={row.requirement_id + i} style={{ background: i % 2 === 0 ? '#fff' : '#f7fafc' }}>
                   <td style={s.td}>{row.requirement_id}</td>
                   <td style={s.td}>{row.requirement_text}</td>
                   <td style={s.td}>{row.product_response}</td>
@@ -254,108 +247,22 @@ function ProductCard({ product, selected, onToggle }) {
   )
 }
 
-export default function ProductsPanel({ sessionId, requirements, onGenerate, generating }) {
-  const [catalogProducts, setCatalogProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+export default function ProductsPanel({ 
+  sessionId, 
+  requirements, 
+  products: backendProducts = [],  // ✅ PROP RENOMMÉE
+  onGenerate, 
+  generating 
+}) {
+  // ✅ PLUS DE CONFLIT DE NOMS
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState([])
 
-  useEffect(() => {
-    loadCatalog()
-  }, [])
+  // ✅ UTILISER DIRECTEMENT LES PRODUITS DU BACKEND
+  const matchedProducts = backendProducts
 
-  const loadCatalog = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await api.get('/products')
-      
-      // Extraire les produits de la réponse
-      const products = response.data?.products || response.data || []
-      setCatalogProducts(products)
-      
-    } catch (err) {
-      console.error('Erreur de chargement du catalogue:', err)
-      setError('Impossible de charger le catalogue produits')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGenerate = () => {
-    if (selected.length === 0) {
-      alert('Veuillez sélectionner au moins un produit');
-      return;
-    }
-    
-    // ✅ Appeler onGenerate directement, sans setGenerating
-    // La gestion du chargement se fait dans App.jsx
-    onGenerate(selected);
-  };
-
-
-  // Fonction de matching simple
-  const getMatchedProducts = () => {
-    if (!requirements || requirements.length === 0) {
-      return catalogProducts.map(p => ({
-        product_id: p.id,
-        product_name: p.name,
-        manufacturer: p.manufacturer,
-        reference: p.reference,
-        compliance_score: 0.5,
-        compliance_rows: [],
-        strengths: ['Produit disponible'],
-        gaps: ['En attente d\'exigences']
-      }))
-    }
-
-    return catalogProducts.map(product => {
-      // Calculer un score basé sur les mots-clés
-      let matchedCount = 0
-      const reqTexts = requirements.map(r => (r.description || '').toLowerCase())
-      const productText = [
-        product.name || '',
-        product.manufacturer || '',
-        ...Object.values(product.specs || {}),
-        ...(product.tags || [])
-      ].join(' ').toLowerCase()
-
-      reqTexts.forEach(req => {
-        const words = req.split(' ')
-        words.forEach(word => {
-          if (word.length > 3 && productText.includes(word)) {
-            matchedCount++
-          }
-        })
-      })
-
-      const maxMatches = Math.max(reqTexts.join(' ').split(' ').filter(w => w.length > 3).length, 1)
-      const score = Math.min(matchedCount / maxMatches + 0.2, 1)
-
-      // Générer des statuts aléatoires pour l'exemple
-      const statuses = ['CONFORME', 'PARTIEL', 'NON_CONFORME', 'NON_VERIFIE']
-      
-      return {
-        product_id: product.id,
-        product_name: product.name,
-        manufacturer: product.manufacturer,
-        reference: product.reference,
-        compliance_score: score,
-        compliance_rows: requirements.slice(0, 8).map(req => ({
-          requirement_id: req.id || 'REQ-001',
-          requirement_text: (req.description || '').substring(0, 60),
-          product_response: product.specs?.[Object.keys(product.specs)[0]] || 'Disponible',
-          status: statuses[Math.floor(Math.random() * statuses.length)],
-          remarks: 'À vérifier en détail'
-        })),
-        strengths: ['Compatibilité technique', 'Marque reconnue'],
-        gaps: ['Vérification supplémentaire requise']
-      }
-    })
-  }
-
-  const matchedProducts = getMatchedProducts()
+  console.log('📥 Produits reçus du backend:', backendProducts)
 
   function toggle(id) {
     setSelected(prev =>
@@ -363,49 +270,26 @@ export default function ProductsPanel({ sessionId, requirements, onGenerate, gen
     )
   }
 
-  // Affichage en chargement
-  if (loading) {
-    return (
-      <div>
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Package size={20} color="#2b6cb0" />
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Chargement du catalogue...</span>
-        </div>
-        <div style={s.loading}>
-          <div>⏳ Chargement des produits disponibles...</div>
-        </div>
-      </div>
-    )
+  const handleGenerate = () => {
+    if (selected.length === 0) {
+      alert('Veuillez sélectionner au moins un produit');
+      return
+    }
+    onGenerate(selected)
   }
 
-  // Affichage d'erreur
-  if (error) {
+  // ✅ AFFICHAGE DU CHARGEMENT (si les produits ne sont pas encore là)
+  if (!backendProducts || backendProducts.length === 0) {
     return (
       <div>
         <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Package size={20} color="#2b6cb0" />
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Erreur de chargement</span>
-        </div>
-        <div style={s.error}>
-          <AlertCircle size={16} style={{ marginRight: 8 }} />
-          {error}
-        </div>
-      </div>
-    )
-  }
-
-  // Affichage si catalogue vide
-  if (catalogProducts.length === 0) {
-    return (
-      <div>
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Package size={20} color="#2b6cb0" />
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Aucun produit disponible</span>
+          <span style={{ fontWeight: 700, fontSize: 16 }}>Aucun produit recommandé</span>
         </div>
         <div style={s.empty}>
-          <div>📦 Le catalogue produits est vide.</div>
+          <div>📦 Aucun produit n'a été recommandé pour ce cahier des charges.</div>
           <div style={{ fontSize: 12, marginTop: 8 }}>
-            Ajoutez des produits dans <code>data/products/catalog.json</code>
+            Vérifiez que le catalogue contient des produits et que le matching a bien fonctionné.
           </div>
         </div>
       </div>
@@ -420,24 +304,9 @@ export default function ProductsPanel({ sessionId, requirements, onGenerate, gen
           Produits Recommandés ({matchedProducts.length})
         </span>
         <span style={{ fontSize: 13, color: '#718096', marginLeft: 'auto' }}>
-          {requirements && requirements.length > 0 
-            ? `Sélectionnez les produits à inclure dans l'offre`
-            : 'Téléchargez un CDC pour voir les recommandations'
-          }
+          Sélectionnez les produits à inclure dans l'offre
         </span>
       </div>
-
-      {(!requirements || requirements.length === 0) && (
-        <div style={s.empty}>
-          📄 Téléchargez un cahier des charges pour générer des recommandations produits.
-        </div>
-      )}
-
-      {requirements && requirements.length > 0 && matchedProducts.length === 0 && (
-        <div style={s.empty}>
-          🔍 Aucun produit ne correspond aux exigences.
-        </div>
-      )}
 
       <div style={s.grid}>
         {matchedProducts.map((p, index) => (
@@ -450,24 +319,22 @@ export default function ProductsPanel({ sessionId, requirements, onGenerate, gen
         ))}
       </div>
 
-      {requirements && requirements.length > 0 && matchedProducts.length > 0 && (
-        <button
-          style={{
-            ...s.generateBtn,
-            opacity: selected.length === 0 ? 0.6 : 1,
-            cursor: selected.length === 0 ? 'not-allowed' : 'pointer'
-          }}
-          onClick={handleGenerate}
-          disabled={generating || selected.length === 0}
-        >
-          {generating
-            ? '⏳ Génération de l\'offre en cours…'
-            : selected.length === 0
-            ? 'Sélectionnez au moins un produit'
-            : `🚀 Générer l'offre technique (${selected.length} produit${selected.length > 1 ? 's' : ''})`
-          }
-        </button>
-      )}
+      <button
+        style={{
+          ...s.generateBtn,
+          opacity: selected.length === 0 ? 0.6 : 1,
+          cursor: selected.length === 0 ? 'not-allowed' : 'pointer'
+        }}
+        onClick={handleGenerate}
+        disabled={generating || selected.length === 0}
+      >
+        {generating
+          ? '⏳ Génération de l\'offre en cours…'
+          : selected.length === 0
+          ? 'Sélectionnez au moins un produit'
+          : `🚀 Générer l'offre technique (${selected.length} produit${selected.length > 1 ? 's' : ''})`
+        }
+      </button>
     </div>
   )
 }

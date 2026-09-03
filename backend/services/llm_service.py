@@ -18,6 +18,7 @@ from typing import List, Dict, Any
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
@@ -97,52 +98,38 @@ def get_embeddings():
 def clean_json_response(raw: str) -> dict:
     """
     Extract and parse JSON returned by the LLM.
-    Handles incomplete JSON by attempting to complete it.
+    Handles markdown code blocks and extra text.
     """
-    # Nettoyer les espaces invisibles
+    # ✅ 1. Supprimer les marqueurs markdown (```json et ```)
     raw = raw.strip()
-    raw = raw.replace('\u200b', '')
-    raw = raw.replace('\ufeff', '')
-    
-    # Supprimer les marqueurs markdown
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     
-    # Supprimer les préfixes
-    raw = re.sub(r'^(?:assistant|json)\s*', '', raw, flags=re.IGNORECASE)
+    # ✅ 2. Supprimer les préfixes "json" ou "assistant"
+    raw = re.sub(r'^(?:json|assistant)\s*', '', raw, flags=re.IGNORECASE)
     
-    # Trouver le premier { et le dernier }
+    # ✅ 3. Trouver le premier { et le dernier }
     start = raw.find("{")
     end = raw.rfind("}")
     
     if start == -1 or end == -1:
         raise ValueError(f"LLM did not return JSON.\n\nResponse:\n{raw[:500]}...")
     
-    # Extraire la partie JSON
+    # ✅ 4. Extraire la partie JSON
     json_str = raw[start:end + 1]
     
-    # ✅ FIX : Si le JSON est incomplet, on essaie de le compléter
-    open_braces = json_str.count('{')
-    close_braces = json_str.count('}')
-    
-    if open_braces > close_braces:
-        logger.warning(f"JSON incomplet : {open_braces} ouvertures, {close_braces} fermetures")
-        # Ajouter les accolades manquantes
-        json_str += '}' * (open_braces - close_braces)
-        logger.info(f"JSON complété avec {open_braces - close_braces} accolades")
-    
-    # Supprimer les caractères de contrôle
+    # ✅ 5. Nettoyer les caractères spéciaux
     json_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', json_str)
     
-    # Tentative de parsing
+    # ✅ 6. Tentative de parsing
     try:
         return json.loads(json_str)
     except json.JSONDecodeError as e:
         logger.warning(f"Erreur JSON initiale: {e}")
         
-        # Nettoyage avancé
+        # ✅ 7. Tentative de réparation
         try:
-            # Remplacer les guillemets simples
+            # Remplacer les guillemets simples par des doubles
             json_fixed = re.sub(r"'([^']+)'", r'"\1"', json_str)
             
             # Supprimer les virgules en trop
@@ -151,9 +138,6 @@ def clean_json_response(raw: str) -> dict:
             
             # Supprimer les sauts de ligne dans les chaînes
             json_fixed = re.sub(r'\n(?=[^"]*")', ' ', json_fixed)
-            
-            # Supprimer les espaces avant les deux-points
-            json_fixed = re.sub(r'\s+:\s*', ':', json_fixed)
             
             return json.loads(json_fixed)
         except json.JSONDecodeError as e2:
@@ -257,98 +241,216 @@ def extract_requirements(cdc_text: str) -> dict:
 # ============================================================
 # 2. PRODUCT COMPLIANCE
 # ============================================================
+# MATCH_PROMPT = ChatPromptTemplate.from_messages([
+#     (
+#         "system",
+#         """Tu es un ingénieur avant-vente expert en réseaux, télécoms et sécurité (ICT/ELV), spécialisé dans l'évaluation de conformité technique.
+
+# Compare les exigences du cahier des charges avec les caractéristiques du produit proposé.
+
+# ⚠️ RÈGLES STRICTES DE SCORING :
+# 1. **CONFORME (100%)** : Le produit répond EXACTEMENT à l'exigence.
+#    - Exemple : "24 ports" → produit a "24 ports Gigabit Ethernet"
+#    - Exemple : "PoE+" → produit a "PoE+ 195W"
+#    - Exemple : "VLAN 802.1Q" → produit a "802.1Q VLAN"
+
+# 2. **PARTIEL (50%)** : Le produit répond PARTIELLEMENT.
+#    - Exemple : "24 ports" → produit a "16 ports"
+#    - Exemple : "PoE+ 370W" → produit a "PoE 150W"
+#    - Exemple : "4 caméras" → produit a "1 caméra"
+
+# 3. **NON_CONFORME (0%)** : Le produit NE répond PAS.
+#    - Exemple : "24 ports" → produit a "8 ports"
+#    - Exemple : "PoE+" → produit n'a pas de PoE
+
+# 📌 RÈGLE CRITIQUE POUR LA RÉPONSE PRODUIT :
+# Pour CHAQUE exigence, la réponse produit doit être la SPÉCIFICATION PRÉCISE du produit qui correspond.
+# NE METS JAMAIS LA MÊME RÉPONSE POUR DEUX EXIGENCES DIFFÉRENTES.
+
+# Exemple correct :
+# Exigence : "24 ports Gigabit Ethernet" → Réponse : "24 x 10/100/1000 Mbps + 4 x SFP"
+# Exigence : "Support VLAN" → Réponse : "802.1Q, jusqu'à 4094 VLAN"
+# Exigence : "Supervision SNMP" → Réponse : "SNMP v1/v2c/v3, interface web, CLI"
+
+# 📊 CALCUL DU SCORE GLOBAL :
+# - Score = (somme des scores individuels) / (nombre total d'exigences)
+# - Chaque exigence a un poids égal
+
+# 📋 STRUCTURE DE RÉPONSE OBLIGATOIRE :
+
+# {{
+#   "compliance_score": 0.85,
+#   "compliance_rows": [
+#     {{
+#       "requirement_id": "REQ-001",
+#       "requirement_text": "24 ports Gigabit Ethernet",
+#       "specified_value": "24 ports",
+#       "product_response": "24 x 10/100/1000 Mbps + 4 x SFP",
+#       "status": "CONFORME",
+#       "score": 1.0,
+#       "remarks": "Le produit a 24 ports Gigabit Ethernet"
+#     }},
+#     {{
+#       "requirement_id": "REQ-002",
+#       "requirement_text": "Support VLAN 802.1Q",
+#       "specified_value": "802.1Q VLAN",
+#       "product_response": "802.1Q, jusqu'à 4094 VLAN",
+#       "status": "CONFORME",
+#       "score": 1.0,
+#       "remarks": "Support VLAN conforme à la norme 802.1Q"
+#     }}
+#   ],
+#   "strengths": [
+#     "24 ports Gigabit Ethernet",
+#     "PoE+ 195W",
+#     "VLAN 802.1Q",
+#     "SNMP v3"
+#   ],
+#   "gaps": [
+#     "Pas de stacking",
+#     "Pas de modules SFP+"
+#   ]
+# }}
+
+# 🎯 POUR CHAQUE PRODUIT, IDENTIFIE :
+# 1. Les exigences CONFORME → Points forts
+# 2. Les exigences PARTIEL → Points d'attention
+# 3. Les exigences NON_CONFORME → Incompatibilités
+
+# 📌 CONSIGNES SPÉCIFIQUES PAR TYPE DE PRODUIT :
+
+# **Commutateurs (switches)** : Évalue sur :
+# - Ports (nombre, type, débit)
+# - PoE (présence, budget, standard)
+# - VLAN (802.1Q, nombre)
+# - Management (SNMP, Web, CLI)
+# - Sécurité (802.1X, ACL)
+# - Redondance (alimentation, stacking)
+# - Montage (rack, format)
+
+# **Caméras** : Évalue sur :
+# - Résolution (MP, qualité)
+# - Type (dôme, bullet, PTZ)
+# - Vision nocturne (IR, distance)
+# - Alimentation (PoE, 12V)
+# - Protection (IP, IK)
+# - Compression (H.265, H.264)
+# - Température de fonctionnement
+
+# **Onduleurs (UPS)** : Évalue sur :
+# - Puissance (VA, W)
+# - Autonomie (minutes)
+# - Type d'onde (sinusoïdale)
+# - Gestion (SNMP, USB)
+# - Format (rack, tour)
+# - Connectique (prises)
+
+# 💡 RÈGLES IMPORTANTES :
+# - La réponse produit doit être EXTRAITE des spécifications du produit
+# - Les remarques doivent être PRÉCISES et JUSTIFIÉES
+# - Un produit peut être CONFORME pour le réseau mais NON_CONFORME pour la vidéo
+# - Sois OBJECTIF et FACTUEL
+
+# Génère le JSON MAINTENANT :
+# """,
+#     ),
+#     (
+#         "human",
+#         """
+# 📋 EXIGENCES TECHNIQUES À ÉVALUER :
+
+# {requirements_json}
+
+# 📦 PRODUIT À ÉVALUER (SPÉCIFICATIONS COMPLÈTES) :
+
+# {product_info}
+
+# 📚 CONTEXTE RAG (documents pertinents) :
+
+# {context}
+
+# ⚠️ RAPPEL : Pour chaque exigence, utilise la SPÉCIFICATION EXACTE du produit.
+# NE RÉPONDS PAS AVEC LA MÊME VALEUR POUR TOUTES LES EXIGENCES.
+
+# ➡️ ÉVALUE LA CONFORMITÉ DU PRODUIT PAR RAPPORT AUX EXIGENCES EN JSON COMPLET :
+# """,
+#     ),
+# ])
+
 MATCH_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        """Tu es un ingénieur avant-vente expert en réseaux, télécoms et sécurité (ICT/ELV), spécialisé dans l'évaluation de conformité technique.
+        """Tu es un ingénieur avant-vente expert en conformité technique, spécialisé dans l'évaluation de produits ICT/ELV.
 
-Compare les exigences du cahier des charges avec les caractéristiques du produit proposé.
+⚠️ RÈGLE ABSOLUE : Le produit a une catégorie spécifique. Seules les exigences PERTINENTES pour cette catégorie sont évaluées.
 
-⚠️ RÈGLES STRICTES DE SCORING :
-1. **CONFORME (100%)** : Le produit répond EXACTEMENT à l'exigence. Aucun écart.
-   - Exemple : "24 ports" → produit a "24 ports Gigabit Ethernet"
-    
-2. **PARTIEL (50%)** : Le produit répond PARTIELLEMENT à l'exigence.
-   - Exemple : "24 ports" → produit a "16 ports" ou "8 ports PoE + 8 ports non PoE"
-   - Exemple : "PoE+ 370W" → produit a "PoE 150W"
-   
-3. **NON_CONFORME (0%)** : Le produit NE répond PAS à l'exigence.
-   - Exemple : "24 ports" → produit a "8 ports"
-   - Exemple : "PoE+" → produit n'a pas de PoE
+**EXEMPLES CONCRETS :**
+
+📌 Exemple 1 : PRODUIT = CAMERA (catégorie: camera)
+Exigence : "24 ports Gigabit Ethernet" → Statut : NON_APPLICABLE (une caméra n'a pas de ports)
+Exigence : "Résolution 4 MP" → Statut : CONFORME
+Exigence : "Vision nocturne IR" → Statut : CONFORME
+
+📌 Exemple 2 : PRODUIT = SWITCH (catégorie: switch)
+Exigence : "24 ports Gigabit Ethernet" → Statut : CONFORME
+Exigence : "Vision nocturne IR" → Statut : NON_APPLICABLE (un switch n'a pas de vision nocturne)
+Exigence : "VLAN 802.1Q" → Statut : CONFORME
+
+📌 Exemple 3 : PRODUIT = UPS (catégorie: ups)
+Exigence : "Autonomie 10 minutes" → Statut : CONFORME
+Exigence : "24 ports Gigabit Ethernet" → Statut : NON_APPLICABLE
+Exigence : "Onde sinusoïdale pure" → Statut : CONFORME
+
+📊 STATUTS POSSIBLES :
+- CONFORME (score: 1.0) : Le produit répond EXACTEMENT à l'exigence
+- PARTIEL (score: 0.5) : Le produit répond PARTIELLEMENT
+- NON_CONFORME (score: 0.0) : Le produit NE répond PAS
+- NON_APPLICABLE (score: 0.0) : L'exigence ne concerne PAS ce type de produit
 
 📊 CALCUL DU SCORE GLOBAL :
-- Le score global est la MOYENNE des scores individuels
-- Chaque exigence a un poids égal (sauf si priorité indiquée)
-- Score = (somme des scores individuels) / (nombre total d'exigences)
+- Score = MOYENNE des scores des exigences APPLICABLES uniquement
+- Les exigences NON_APPLICABLE sont EXCLUES du calcul
+- Exemple : 8 exigences, 2 applicables (1 CONFORME + 1 PARTIEL) → Score = (1.0 + 0.5) / 2 = 0.75
 
-📋 STRUCTURE DE RÉPONSE OBLIGATOIRE :
+📋 STRUCTURE JSON OBLIGATOIRE :
 
 {{
-  "compliance_score": 0.85,
+  "compliance_score": 0.75,
   "compliance_rows": [
     {{
       "requirement_id": "REQ-001",
-      "requirement_text": "Switch 24 ports PoE+",
-      "specified_value": "24 ports, PoE+ 370W",
-      "product_response": "24 ports Gigabit Ethernet, PoE+ 195W",
+      "requirement_text": "24 ports Gigabit Ethernet",
+      "specified_value": "24 ports",
+      "product_response": "24 x 10/100/1000 Mbps + 4 x SFP",
       "status": "CONFORME",
       "score": 1.0,
-      "remarks": "Le produit répond exactement avec 24 ports et PoE+"
+      "remarks": "Le produit a 24 ports Gigabit Ethernet"
     }},
     {{
       "requirement_id": "REQ-002",
-      "requirement_text": "Support VLAN 802.1Q",
-      "specified_value": "802.1Q VLAN",
-      "product_response": "Support VLAN complet",
-      "status": "CONFORME",
-      "score": 1.0,
-      "remarks": "Support VLAN conforme à la norme 802.1Q"
-    }},
-    {{
-      "requirement_id": "REQ-003",
-      "requirement_text": "4 caméras IP 4MP",
-      "specified_value": "4 caméras, 4MP",
-      "product_response": "Caméra IP 4MP",
-      "status": "PARTIEL",
-      "score": 0.5,
-      "remarks": "Le produit est une caméra 4MP mais ne fournit qu'une unité, pas 4"
+      "requirement_text": "Vision nocturne IR",
+      "specified_value": "IR 30m",
+      "product_response": "Non applicable",
+      "status": "NON_APPLICABLE",
+      "score": 0.0,
+      "remarks": "Ce produit est un switch, pas une caméra"
     }}
   ],
   "strengths": [
-    "24 ports PoE+ avec budget suffisant",
-    "Support VLAN 802.1Q complet",
-    "Supervision SNMP v3"
+    "24 ports Gigabit Ethernet",
+    "PoE+ 195W"
   ],
   "gaps": [
-    "Ne fournit qu'une caméra, pas 4",
-    "Pas de support SFP+",
-    "Non compatible avec le stacking"
+    "Pas de stacking"
   ]
 }}
 
-🔍 POUR CHAQUE PRODUIT, IDENTIFIE :
-1. Les exigences NON_CONFORME → Incompatibilités
-2. Les exigences PARTIEL → Points d'attention
-3. Les exigences CONFORME → Points forts
-
-🔍 CRITÈRES D'ÉVALUATION :
-
-1. **Compatibilité technique** : Le produit supporte-t-il les protocoles/normes requis ?
-2. **Capacité/Performance** : Les spécifications quantitatives sont-elles suffisantes ?
-3. **Fonctionnalités** : Les fonctionnalités requises sont-elles présentes ?
-4. **Intégration** : Le produit s'intègre-t-il dans l'environnement existant ?
-5. **Évolutivité** : Le produit permet-il une évolution future ?
-
-🎯 PRODUITS SPÉCIFIQUES À ÉVALUER :
-- Les commutateurs (switches) doivent être évalués sur : ports, PoE, VLAN, SNMP, sécurité
-- Les caméras doivent être évaluées sur : résolution, vision nocturne, PoE, protocoles
-- Les onduleurs doivent être évalués sur : puissance, autonomie, gestion, connectivité
-- Les câbles/connectiques sur : catégorie, normes, longueur
-
-💡 CONSEILS :
-- Un produit peut être CONFORME pour une exigence réseau mais NON_CONFORME pour une exigence vidéo
-- La réponse produit doit être extraite des spécifications disponibles
-- Les remarques doivent être PRÉCISES et JUSTIFIÉES
+🎯 RÈGLES D'OR :
+1. Pour CHAQUE exigence, détermine si elle est APPLICABLE à la catégorie du produit
+2. Si APPLICABLE : compare avec les spécifications du produit
+3. Si NON APPLICABLE : status = "NON_APPLICABLE", score = 0.0
+4. La réponse produit doit être la SPÉCIFICATION EXACTE du produit
+5. Chaque exigence doit avoir une réponse UNIQUE
 
 Génère le JSON MAINTENANT :
 """,
@@ -360,63 +462,139 @@ Génère le JSON MAINTENANT :
 
 {requirements_json}
 
-📦 PRODUIT À ÉVALUER :
+📦 PRODUIT À ÉVALUER (SPÉCIFICATIONS COMPLÈTES) :
 
 {product_info}
 
-📚 CONTEXTE (extraits de documents pertinents) :
+📚 CONTEXTE RAG :
 
 {context}
 
-➡️ ÉVALUE LA CONFORMITÉ DU PRODUIT PAR RAPPORT AUX EXIGENCES EN JSON COMPLET :
+⚠️ RAPPEL : Le produit est de catégorie "{category}".
+Évalue UNIQUEMENT les exigences PERTINENTES pour cette catégorie.
+Marque les autres comme "NON_APPLICABLE".
+Le score est la MOYENNE des exigences applicables uniquement.
+
+➡️ ÉVALUE LA CONFORMITÉ EN JSON COMPLET :
 """,
     ),
 ])
 
-
 def match_product_compliance(
-    requirements: list[dict],
-    product: dict,
-    context_docs: list = None
-) -> dict:
-    """Match un produit avec les exigences (avec contexte RAG)"""
+    requirements: List[Dict[str, Any]],
+    product: Dict[str, Any],
+    context_docs: List[Any],
+) -> Dict[str, Any]:
+    """
+    Matches a product against requirements and returns compliance scores.
+    """
+    logger.info(f"Matching produit: {product.get('reference', 'unknown')}")
     
     # Préparer le contexte
     context_text = ""
     if context_docs:
-        for doc in context_docs[:3]:
-            content = doc.get("content", "")[:500]
+        for doc in context_docs:
+            if isinstance(doc, dict):
+                content = doc.get("content", "")
+            else:
+                content = doc.page_content if hasattr(doc, 'page_content') else str(doc)
             if content:
                 context_text += f"\n---\n{content}\n"
     
-    # Préparer les infos produit
+    # Préparer le product_info structuré
+    specs = product.get("specs", {})
+    specs_lines = []
+    for key, value in specs.items():
+        if value and value != "":
+            key_clean = key.replace('_', ' ').capitalize()
+            specs_lines.append(f"  - {key_clean}: {value}")
+    
+    specs_text = "\n".join(specs_lines) if specs_lines else "  - Aucune spécification disponible"
+    
+    # ✅ RÉCUPÉRER LA CATÉGORIE
+    category = product.get("category", "network_device")
+    
     product_info = (
-        f"Nom : {product.get('name', '')}\n"
-        f"Fabricant : {product.get('manufacturer', '')}\n"
-        f"Référence : {product.get('reference', '')}\n"
-        f"Spécifications : {json.dumps(product.get('specs', {}), ensure_ascii=False, indent=2)}"
+        f"Nom : {product.get('name', 'Inconnu')}\n"
+        f"Fabricant : {product.get('manufacturer', 'Inconnu')}\n"
+        f"Référence : {product.get('reference', 'Inconnu')}\n"
+        f"Catégorie : {category}\n"
+        f"\n📋 SPÉCIFICATIONS TECHNIQUES :\n{specs_text}"
     )
     
+    logger.info(f"📦 Product info envoyé au LLM:\n{product_info}")
+    logger.info(f"📋 Catégorie: {category}")
+    
+    # Appeler le LLM avec la catégorie
     llm = get_llm(temperature=0.0)
     chain = MATCH_PROMPT | llm | StrOutputParser()
 
     try:
         raw = chain.invoke({
             "requirements_json": json.dumps(
-                requirements[:15],  # ✅ Limiter à 15 exigences pour éviter la surcharge
+                requirements,
                 ensure_ascii=False,
                 indent=2,
             ),
-            "product_info": product_info[:3000],  # ✅ Limiter
-            "context": context_text[:2000],  # ✅ Limiter
+            "product_info": product_info,
+            "context": context_text,
+            "category": category,  # ✅ TRANSMETTRE LA CATÉGORIE
         })
         
-        logger.info(f"Réponse match reçue: {len(raw)} caractères")
-        return clean_json_response(raw)
+        # Log de la réponse brute
+        logger.info("=" * 60)
+        logger.info("📝 RÉPONSE BRUTE DU LLM (match_product_compliance):")
+        logger.info("=" * 60)
+        logger.info(raw[:500] + "..." if len(raw) > 500 else raw)
+        logger.info("=" * 60)
+        logger.info(f"📊 Longueur: {len(raw)} caractères")
+        
+        # Parser le JSON
+        result = clean_json_response(raw)
+
+        # ✅ AJOUTER CETTE CORRECTION ICI
+        # ============================================================
+        # VÉRIFIER SI DES EXIGENCES SONT APPLICABLES
+        # ============================================================
+        compliance_rows = result.get('compliance_rows', [])
+        applicable_rows = [r for r in compliance_rows if r.get('status') != 'NON_APPLICABLE']
+        
+        if not applicable_rows:
+            # ✅ AUCUNE EXIGENCE APPLICABLE → SCORE = 0%
+            logger.info(f"⚠️ Aucune exigence applicable pour {product.get('name')}")
+            result["compliance_score"] = 0.0
+            result["strengths"] = ["Produit disponible dans le catalogue"]
+            result["gaps"] = ["Aucune exigence ne correspond à ce type de produit"]
+        else:
+            # ✅ RECALCULER LE SCORE SI BESOIN
+            total_score = sum(r.get('score', 0) for r in applicable_rows)
+            result["compliance_score"] = total_score / len(applicable_rows)
+            logger.info(f"✅ Score recalculé: {result['compliance_score']} ({len(applicable_rows)} exigences applicables)")
+        
+        # ✅ AJOUTER LES INFOS PRODUIT
+        result["product_id"] = product.get("id") or product.get("product_id")
+        result["product_name"] = product.get("name")
+        result["manufacturer"] = product.get("manufacturer")
+        result["reference"] = product.get("reference")
+        
+        # ✅ LOG DU RÉSULTAT PARSÉ
+        logger.info(f"✅ Score final: {result.get('compliance_score', 'N/A')}")
+        
+        # Compter les statuts
+        rows = result.get('compliance_rows', [])
+        applicable = [r for r in rows if r.get('status') != 'NON_APPLICABLE']
+        conformes = [r for r in applicable if r.get('status') == 'CONFORME']
+        
+        logger.info(f"📊 Exigences: {len(rows)} total, {len(applicable)} applicables, {len(conformes)} conformes")
+        
+        for row in rows[:5]:
+            logger.info(f"   {row.get('requirement_id')}: {row.get('status')} → {row.get('product_response', 'N/A')[:50]}")
+        
+        return result
+        
     except Exception as e:
         logger.error(f"Erreur lors du matching: {e}")
         raise
-
 
 # ============================================================
 # 3. OFFER GENERATION
@@ -559,8 +737,8 @@ def generate_offer(
     context_text = ""
     if context_docs:
         context_text = "Documents techniques pertinents :\n"
-        for doc in context_docs[:3]:
-            content = doc.get("content", "")[:500]
+        for doc in context_docs:
+            content = doc.get("content", "")
             if content:
                 context_text += f"\n---\n{content}\n"
     

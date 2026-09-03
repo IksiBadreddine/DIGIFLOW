@@ -4,11 +4,20 @@ import RequirementsPanel from './components/RequirementsPanel.jsx'
 import ProductsPanel from './components/ProductsPanel.jsx'
 import OfferPanel from './components/OfferPanel.jsx'
 import { generateOffer } from './services/api.js'
+import logoDigiflow from './assets/logo_digiflow.png';
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 const s = {
   app: { minHeight: '100vh', background: '#f0f4f8' },
 
+
+  navLogo: {
+    width: '100px',
+    height: '45px',
+    objectFit: 'contain',
+    display: 'block',
+    flexShrink: 0,
+  },
   // Navbar
   nav: {
     background: 'linear-gradient(135deg, #0f2347, #1a365d)',
@@ -118,14 +127,19 @@ export default function App() {
   const handleAnalysis = (result) => {
     console.log('📥 Analyse reçue dans App:', result);
     
-    // ✅ Vérifier que les données sont valides
+    // ✅ AJOUTER CES LOGS POUR VÉRIFIER LES PRODUITS
     if (result && result.analysis) {
+      console.log('📦 Produits recommandés:', result.analysis.recommended_products)
+      if (result.analysis.recommended_products && result.analysis.recommended_products.length > 0) {
+        console.log('📋 Détails du premier produit:', result.analysis.recommended_products[0])
+        console.log('📋 Lignes de conformité:', result.analysis.recommended_products[0].compliance_rows)
+      }
+      
       setAnalysis(result.analysis);
       setSessionId(result.session_id);
-      setStep(1); // ✅ CORRIGÉ : setStep au lieu de setCurrentStep
+      setStep(1);
     } else {
       console.error('❌ Données d\'analyse invalides:', result);
-      setError('Erreur lors de l\'analyse du document');
     }
   };
 
@@ -172,16 +186,38 @@ export default function App() {
 
       {/* Navbar */}
       <nav style={s.nav}>
-        <span style={s.navLogo}>⚡ PresalesAI</span>
-        <span style={s.navSub}>Génération d'Offres Techniques ICT/ELV</span>
-        <span style={s.navPill}>GPT-5.4 · RAG · ChromaDB</span>
+        <img
+          src={logoDigiflow}
+          alt="DIGIFLOW"
+          style={{
+            width: '100px',
+            height: '45px',
+            objectFit: 'contain',
+            display: 'block',
+            flexShrink: 0,
+          }}
+        />
+
+        <span style={s.navSub}>
+          Génération d'Offres Techniques ICT/ELV
+        </span>
+
+        <span style={s.navPill}>
+          LLM · RAG · ChromaDB
+        </span>
+
         {step > 0 && (
           <button
             onClick={reset}
             style={{
-              marginLeft: 16, padding: '5px 14px', borderRadius: 6,
-              background: 'rgba(255,255,255,.12)', color: '#fff',
-              border: '1px solid rgba(255,255,255,.25)', fontSize: 12, cursor: 'pointer',
+              marginLeft: 16,
+              padding: '5px 14px',
+              borderRadius: 6,
+              background: 'rgba(255,255,255,.12)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,.25)',
+              fontSize: 12,
+              cursor: 'pointer',
             }}
           >
             ↩ Nouveau document
@@ -241,7 +277,7 @@ export default function App() {
             {/* Feature overview */}
             <div style={{ ...s.cols, marginTop: 24, gridTemplateColumns: 'repeat(3, 1fr)' }}>
               {[
-                { icon: '🔍', title: 'Extraction IA', desc: 'GPT-5.4 analyse et structure toutes les exigences techniques du document' },
+                { icon: '🔍', title: 'Extraction IA', desc: 'LLM analyse et structure toutes les exigences techniques du document' },
                 { icon: '🎯', title: 'Matching Produits', desc: 'Scoring de conformité automatique sur l\'ensemble du catalogue produits' },
                 { icon: '📝', title: 'Génération Offre', desc: 'Offre technique complète + BOQ + tableau de conformité exportable DOCX' },
               ].map(f => (
@@ -284,7 +320,8 @@ export default function App() {
           <ProductsPanel 
             sessionId={sessionId}
             requirements={analysis?.extracted_requirements || []}
-            onGenerate={handleGenerate}  // ✅ CORRIGÉ : handleGenerate au lieu de handleGenerateOffer
+            products={analysis?.recommended_products || []}  // ✅ PASSER LES PRODUITS
+            onGenerate={handleGenerate}
             generating={generating}
           />
         )}
@@ -306,8 +343,8 @@ export default function App() {
             </div>
             <div style={s.spinSub}>
               {loading
-                ? 'GPT-5.4 extrait les exigences et score les produits'
-                : 'GPT-4 rédige l\'offre technique complète'
+                ? 'LLM extrait les exigences et score les produits'
+                : 'LLM rédige l\'offre technique complète'
               }
             </div>
           </div>

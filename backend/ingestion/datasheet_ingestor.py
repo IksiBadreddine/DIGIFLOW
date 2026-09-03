@@ -64,64 +64,76 @@ class DatasheetIngestor(BaseIngestor):
         return False
     
     def _extract_with_llm(self, text: str, file_path: str) -> dict:
-        """✅ Extrait les informations du datasheet avec un LLM"""
-        
-        # Limiter le texte pour éviter de dépasser le contexte
-        text_truncated = text[:6000]
+        """Extrait TOUTES les informations du datasheet avec un LLM"""
         
         prompt = f"""
-        Analyse ce datasheet et extrait les informations suivantes en JSON.
+        Analyse ce datasheet et extrait TOUTES les spécifications techniques en JSON.
         
         Texte du datasheet :
-        {text_truncated}
+        {text[:6000]}
         
-        Réponds UNIQUEMENT en JSON valide avec cette structure EXACTE :
+        Réponds UNIQUEMENT en JSON avec cette structure :
         {{
-            "product_name": "Nom complet du produit",
-            "manufacturer": "Nom du fabricant",
-            "reference": "Référence produit",
-            "category": "catégorie (switch, camera, ups, cable, rack, server, firewall)",
-            "specs": {{
-                "ports": "Nombre et type de ports",
-                "poe": "Spécifications PoE",
-                "power": "Alimentation",
-                "weight": "Poids",
-                "dimensions": "Dimensions",
-                "temperature": "Température de fonctionnement"
-            }},
-            "tags": ["mot1", "mot2", "mot3"]
+        "product_name": "Nom complet du produit",
+        "manufacturer": "Nom du fabricant",
+        "reference": "Référence produit",
+        "category": "switch|camera|ups|cable|rack|connector|server",
+        
+        "specs": {{
+            "ports": "Nombre et type de ports",
+            "poe": "Spécifications PoE",
+            "vlan": "Support VLAN",
+            "management": "Gestion (SNMP, Web, CLI)",
+            "security": "Fonctionnalités de sécurité",
+            "power": "Alimentation électrique",
+            "weight": "Poids",
+            "dimensions": "Dimensions",
+            "temperature": "Température de fonctionnement",
+            "mounting": "Montage (rack, format)",
+            "warranty": "Garantie",
+            "resolution": "Résolution (pour caméras)",
+            "night_vision": "Vision nocturne",
+            "protection": "Indice de protection (IP)",
+            "compression": "Compression vidéo",
+            "autonomy": "Autonomie (pour UPS)",
+            "outlets": "Nombre de prises (pour UPS)",
+            "wave": "Type d'onde (pour UPS)",
+            "technology": "Technologie (pour UPS)"
+        }},
+        
+        "tags": ["mot1", "mot2", "mot3", "mot4", "mot5"]
         }}
         
-        IMPORTANT : Si une information n'est pas disponible, mets une chaîne vide "".
+        IMPORTANT : Extrais TOUTES les spécifications disponibles.
         """
         
         try:
             llm = get_llm(temperature=0.0)
             response = llm.invoke(prompt)
             
-            # Nettoyer la réponse (enlever les marqueurs markdown)
             raw = response.content.strip()
             raw = re.sub(r'^```(?:json)?\s*', '', raw)
             raw = re.sub(r'\s*```$', '', raw)
             
             result = json.loads(raw)
-            logger.info(f"✅ Extraction LLM réussie pour {file_path}")
+            
+            # ✅ S'assurer que specs est un dictionnaire
+            if not result.get("specs"):
+                result["specs"] = {}
+            
+            # ✅ Nettoyer les specs vides
+            result["specs"] = {k: v for k, v in result["specs"].items() if v and v != ""}
+            
+            logger.info(f"✅ Extraction LLM réussie : {len(result.get('specs', {}))} spécifications")
             return result
             
         except Exception as e:
-            logger.warning(f"⚠️ Échec de l'extraction LLM, fallback sur regex: {e}")
-            # ✅ Fallback sur les méthodes statiques
-            return {
-                "product_name": self._extract_product_name(text, file_path),
-                "manufacturer": self._detect_manufacturer(text, file_path),
-                "reference": self._extract_product_reference(text, file_path),
-                "category": self._extract_category(text, {}),
-                "specs": self._extract_specifications(text),
-                "tags": self._extract_keywords(text, {})
-            }
+            logger.warning(f"⚠️ Échec de l'extraction LLM: {e}")
+            # Fallback sur la méthode statique
+            return self._extract_fallback(text, file_path)
     
     def ingest(self, file_path: str) -> ExtractedDocument:
-        """Ingère un datasheet et ajoute le produit au catalogue"""
+        """Ingère un datasheet et ajoute le produit au catalogue avec TOUTES les spécifications"""
         logger.info(f"Ingestion du datasheet: {file_path}")
         
         doc_type = DocumentType.PDF_DATASHEET
@@ -130,7 +142,7 @@ class DatasheetIngestor(BaseIngestor):
         try:
             full_text = self._extract_text(file_path)
             
-            # ✅ Utiliser le LLM pour l'extraction
+            # ✅ Utiliser le LLM pour l'extraction complète
             if self.use_llm:
                 extracted = self._extract_with_llm(full_text, file_path)
             else:
@@ -151,6 +163,13 @@ class DatasheetIngestor(BaseIngestor):
             category = extracted.get("category", "network_device")
             specs = extracted.get("specs", {})
             keywords = extracted.get("tags", [])
+            
+            # ✅ Log des spécifications extraites
+            logger.info(f"📦 Produit: {product_name} ({manufacturer})")
+            logger.info(f"📋 Spécifications extraites: {len(specs)}")
+            for key, value in specs.items():
+                if value and value != "":
+                    logger.info(f"   - {key}: {value}")
             
             # ✅ Mettre à jour les métadonnées
             metadata.manufacturer = manufacturer
@@ -179,11 +198,10 @@ class DatasheetIngestor(BaseIngestor):
                 status=DocumentStatus.COMPLETED
             )
             
-            # ✅ AJOUTER LE PRODUIT AU CATALOGUE
+            # ✅ AJOUTER LE PRODUIT AU CATALOGUE AVEC TOUTES LES SPECS
             try:
                 product_service = ProductService()
                 
-                # ✅ Utiliser l'ID généré par le LLM ou le fallback
                 product_id = product_ref or self._generate_product_id(manufacturer, product_name)
                 
                 product_service.create_or_update_product(
@@ -192,13 +210,13 @@ class DatasheetIngestor(BaseIngestor):
                     manufacturer=manufacturer,
                     reference=product_ref,
                     category=category,
-                    specs=specs,
+                    specs=specs,  # ✅ TOUTES les spécifications
                     tags=keywords,
                     datasheet_summary=full_text[:500],
                     datasheet_document_id=doc.id
                 )
                 product_service.close()
-                logger.info(f"✅ Produit ajouté au catalogue: {product_name} ({manufacturer})")
+                logger.info(f"✅ Produit ajouté au catalogue avec {len(specs)} spécifications")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Erreur d'ajout au catalogue: {e}")

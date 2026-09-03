@@ -1,0 +1,85 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, propose une offre technique pour le projet d'installation réseau d'entreprise. Ce projet vise à mettre en place une infrastructure réseau robuste et conforme aux normes en vigueur, avec un délai d'exécution de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une infrastructure réseau capable de gérer efficacement le trafic de données, avec des équipements conformes aux normes actuelles. Les exigences incluent un switch manageable avec support PoE+, une capacité de VLAN étendue, et une gestion avancée via SNMP."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "1. Switch manageable avec au moins 24 ports.\n2. Support PoE+ avec un budget d'alimentation suffisant.\n3. Capacité VLAN jusqu'à 4094.\n4. Gestion via SNMP v1/v2c/v3.\n5. Installation conforme aux normes de câblage Cat6."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "Nous proposons l'utilisation du switch Cisco CBS350-24P-4G, qui répond parfaitement aux exigences du projet. Ce switch offre 24 ports avec PoE+, un budget d'alimentation de 195 W, et une gestion avancée via SNMP. Sa capacité VLAN jusqu'à 4094 permet une segmentation efficace du réseau."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Le switch Cisco CBS350-24P-4G est sélectionné pour sa fiabilité et ses fonctionnalités avancées. Il est conforme aux normes de montage en rack 19 pouces, ce qui facilite son intégration dans l'infrastructure existante."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "Le réseau sera structuré en utilisant des câbles Cat6 pour assurer une performance optimale. La topologie réseau inclura des VLAN pour segmenter le trafic et optimiser la sécurité et l'efficacité du réseau."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Le projet sera exécuté en deux phases principales : installation physique des équipements et configuration réseau. Des tests de validation seront effectués pour garantir la conformité aux exigences techniques. Le délai total d'exécution est de 2 semaines."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau ci-dessous détaille la conformité de notre solution par rapport aux exigences du projet."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch Manageable PoE+ CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Conforme aux exigences de gestion et de PoE+"
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Switch manageable avec au moins 24 ports",
+      "product_response": "Cisco CBS350-24P-4G avec 24 ports",
+      "status": "CONFORME",
+      "remarks": "Le switch propose exactement 24 ports"
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Support PoE+ avec un budget d'alimentation suffisant",
+      "product_response": "PoE+ avec un budget total de 195 W",
+      "status": "CONFORME",
+      "remarks": "Budget PoE+ adéquat pour les besoins du projet"
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Capacité VLAN jusqu'à 4094",
+      "product_response": "Support VLAN 802.1Q jusqu'à 4094",
+      "status": "CONFORME",
+      "remarks": "Capacité VLAN conforme aux exigences"
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Gestion via SNMP v1/v2c/v3",
+      "product_response": "Support SNMP v1/v2c/v3",
+      "status": "CONFORME",
+      "remarks": "Gestion avancée conforme"
+    }
+  ],
+  "date": "03/09/2026",
+  "session_id": "session_86b2a8d874125033",
+  "selected_products": [
+    "REF-SW24"
+  ],
+  "total_compliance_rate": 0.85
+}
