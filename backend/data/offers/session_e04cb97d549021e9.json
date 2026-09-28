@@ -1,0 +1,96 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, propose une solution complète pour le projet d'installation réseau d'entreprise. Ce projet vise à mettre en place une infrastructure réseau robuste et conforme aux normes, avec un délai d'exécution de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une infrastructure réseau qui respecte les normes en vigueur, avec une capacité de gestion et de supervision avancée. Les équipements doivent être facilement disponibles et éprouvés pour garantir une installation rapide et fiable."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "Les exigences techniques incluent : 1) Respect des normes de câblage structuré, 2) Continuité électrique des équipements actifs, 3) Capacité de gestion VLAN et PoE, 4) Supervision SNMP, 5) Protection par onduleur."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "Nous proposons un switch manageable Cisco CBS350-24P-4G pour sa capacité PoE+ et sa gestion VLAN avancée, protégé par un onduleur Eaton 9PX pour assurer la continuité électrique. Cette solution est hébergée dans une baie de brassage 19 pouces."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Le switch Cisco CBS350-24P-4G est choisi pour sa fiabilité et ses fonctionnalités avancées de gestion réseau. L'onduleur Eaton 9PX est sélectionné pour sa technologie On-Line Double Conversion, garantissant une protection optimale des équipements."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "L'architecture réseau repose sur un câblage structuré conforme aux normes, avec une topologie centralisée autour du switch Cisco. Le câblage est optimisé pour la distribution PoE et la segmentation VLAN, assurant une performance réseau optimale."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Le projet sera exécuté en phases : 1) Préparation et validation du site, 2) Installation des équipements, 3) Configuration réseau, 4) Tests et validation finale. Un planning détaillé sera fourni pour garantir le respect du délai de 2 semaines."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau de conformité ci-dessous détaille la réponse de notre solution à chaque exigence technique du projet."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch Manageable PoE+ CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Assure la gestion VLAN et l'alimentation PoE des équipements réseau."
+    },
+    {
+      "pos": "2",
+      "designation": "Onduleur Eaton 9PX 1500 VA",
+      "reference": "9PX 1000/1500/2200/3000 VA",
+      "manufacturer": "Eaton",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Protection électrique pour les équipements actifs."
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Respect des normes de câblage structuré.",
+      "product_response": "Câblage structuré conforme aux normes en vigueur.",
+      "status": "CONFORME",
+      "remarks": "Le câblage structuré est conforme aux normes internationales."
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Continuité électrique des équipements actifs.",
+      "product_response": "Protection par onduleur Eaton 9PX.",
+      "status": "CONFORME",
+      "remarks": "L'onduleur Eaton 9PX assure la continuité électrique."
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Capacité de gestion VLAN et PoE.",
+      "product_response": "Switch Cisco CBS350-24P-4G avec gestion VLAN et PoE+.",
+      "status": "CONFORME",
+      "remarks": "Le switch Cisco offre une gestion VLAN avancée et PoE+."
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Supervision SNMP.",
+      "product_response": "Switch Cisco CBS350-24P-4G avec SNMP v1/v2c/v3.",
+      "status": "CONFORME",
+      "remarks": "Le switch supporte la supervision SNMP pour une gestion efficace."
+    }
+  ],
+  "date": "15/09/2026",
+  "session_id": "session_e04cb97d549021e9",
+  "selected_products": [
+    "9PX 1000/1500/2200/3000 VA",
+    "REF-SW24",
+    "REF-CAM4MP"
+  ],
+  "total_compliance_rate": 0.85
+}

@@ -1,0 +1,111 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, propose une offre technique pour le projet d'installation réseau d'entreprise. Ce projet vise à mettre en place une infrastructure réseau robuste et sécurisée, respectant les normes en vigueur et répondant aux exigences de continuité électrique et de vidéosurveillance. Le délai de réalisation est de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une solution réseau intégrée, comprenant la gestion de l'alimentation électrique des équipements actifs et la vidéosurveillance. Les contraintes incluent le respect des normes de câblage structuré et la continuité électrique, avec un taux de conformité attendu de 85%."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "Les exigences techniques incluent : 1) Alimentation PoE pour les caméras IP, 2) Segmentation VLAN pour le trafic data/vidéo, 3) Supervision SNMP, 4) Protection électrique via onduleur, 5) Conformité aux normes de câblage structuré."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "La solution repose sur un switch manageable Cisco 24 ports PoE+ pour l'alimentation des caméras Hikvision, avec segmentation VLAN et supervision SNMP. Les équipements seront hébergés dans une baie de brassage 19 pouces, protégée par un onduleur APC SMT1500IC pour assurer la continuité électrique."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Les équipements proposés incluent : 1) Switch Cisco 24 ports PoE+ pour sa capacité à gérer le trafic et l'alimentation PoE, 2) Caméras Hikvision pour leur résolution 4 MP et protection IP67/IK10, 3) Onduleur APC pour sa puissance de 1500 VA et son autonomie de 10 à 15 minutes."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "Le réseau sera structuré selon les normes en vigueur, avec un câblage CAT6 pour assurer une bande passante adéquate. La topologie inclura des VLANs pour séparer le trafic data et vidéo, et le tout sera supervisé via SNMP."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "La méthodologie inclut : 1) Planification détaillée, 2) Installation des équipements, 3) Configuration réseau et tests fonctionnels, 4) Recette finale avec le client. Le tout sera réalisé dans un délai de 2 semaines."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau de conformité ci-dessous détaille chaque exigence et notre réponse, avec un statut de conformité."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch manageable 24 ports PoE+",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Pour alimentation PoE et gestion VLAN"
+    },
+    {
+      "pos": "2",
+      "designation": "Caméra IP Dôme 4MP",
+      "reference": "REF-CAM4MP",
+      "manufacturer": "Hikvision",
+      "unit": "U",
+      "quantity": 4,
+      "remarks": "Pour vidéosurveillance avec vision nocturne"
+    },
+    {
+      "pos": "3",
+      "designation": "Onduleur 1500VA",
+      "reference": "REF-UPS15",
+      "manufacturer": "APC",
+      "unit": "U",
+      "quantity": 1,
+      "remarks": "Pour continuité électrique des équipements"
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Alimentation PoE pour les caméras IP",
+      "product_response": "Switch Cisco 24 ports PoE+",
+      "status": "CONFORME",
+      "remarks": "Le switch supporte l'alimentation PoE nécessaire."
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Segmentation VLAN pour le trafic data/vidéo",
+      "product_response": "Switch Cisco avec gestion VLAN",
+      "status": "CONFORME",
+      "remarks": "Le switch permet la segmentation VLAN."
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Supervision SNMP",
+      "product_response": "Switch Cisco avec SNMP",
+      "status": "CONFORME",
+      "remarks": "Le switch supporte la supervision SNMP."
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Protection électrique via onduleur",
+      "product_response": "Onduleur APC SMT1500IC",
+      "status": "CONFORME",
+      "remarks": "L'onduleur assure la continuité électrique."
+    },
+    {
+      "requirement_id": "REQ-005",
+      "requirement_text": "Conformité aux normes de câblage structuré",
+      "product_response": "Câblage CAT6",
+      "status": "CONFORME",
+      "remarks": "Le câblage est conforme aux normes en vigueur."
+    }
+  ],
+  "date": "14/09/2026",
+  "session_id": "session_dbefbfc020d1ad24",
+  "selected_products": [
+    "REF-CAM4MP",
+    "REF-UPS15"
+  ],
+  "total_compliance_rate": 0.85
+}
