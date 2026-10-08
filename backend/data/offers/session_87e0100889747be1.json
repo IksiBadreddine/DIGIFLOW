@@ -1,0 +1,96 @@
+{
+  "title": "Offre Technique - Projet d'Installation Réseau d'Entreprise",
+  "reference": "REF-SESSION_",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "content": "Notre société, spécialisée dans les solutions ICT, ELV et Télécom, propose une offre technique pour le projet d'installation réseau d'entreprise. L'objectif est de fournir une infrastructure réseau robuste, conforme aux normes, et déployée dans un délai de 2 semaines."
+    },
+    {
+      "title": "2. Compréhension du Besoin",
+      "content": "Le client nécessite une infrastructure réseau fiable avec des équipements conformes aux normes industrielles. Les contraintes incluent un délai de 2 semaines pour l'installation complète. Les équipements doivent inclure des onduleurs pour garantir la continuité de service."
+    },
+    {
+      "title": "3. Synthèse des Exigences Techniques",
+      "content": "1. Infrastructure réseau conforme aux normes.\n2. Installation complète dans un délai de 2 semaines.\n3. Utilisation d'onduleurs pour la protection électrique.\n4. Supervision et gestion réseau via SNMP."
+    },
+    {
+      "title": "4. Solution Technique Proposée",
+      "content": "Nous proposons l'utilisation de switches Cisco CBS350-24P-4G pour leur capacité à gérer des VLANs et leur support PoE+, essentiel pour les périphériques tels que les caméras IP. Pour la protection électrique, nous recommandons les onduleurs Eaton 9PX pour leur technologie On-Line Double Conversion, assurant une protection optimale des équipements critiques."
+    },
+    {
+      "title": "5. Équipements et Matériels",
+      "content": "Les switches Cisco CBS350-24P-4G sont choisis pour leur capacité à gérer jusqu'à 4094 VLANs et leur budget PoE+ de 195 W. Les onduleurs Eaton 9PX sont sélectionnés pour leur haute efficacité énergétique et leur capacité à fournir une alimentation continue en cas de coupure."
+    },
+    {
+      "title": "6. Réseau, Câblage et Topologie ELV",
+      "content": "L'architecture réseau sera basée sur une topologie en étoile, avec des câblages Cat6 pour garantir une bande passante élevée. Les switches seront montés en rack 19 pouces pour une gestion simplifiée et un accès facile."
+    },
+    {
+      "title": "7. Méthodologie d'Exécution",
+      "content": "Le projet sera exécuté en trois phases : 1) Préparation et logistique, 2) Installation physique des équipements, 3) Configuration et tests. Chaque phase sera suivie de tests rigoureux pour garantir la conformité aux exigences."
+    },
+    {
+      "title": "8. Tableau de Conformité",
+      "content": "Le tableau de conformité ci-dessous détaille comment chaque exigence du client est satisfaite par notre solution."
+    }
+  ],
+  "boq": [
+    {
+      "pos": "1",
+      "designation": "Switch Manageable PoE+ Cisco CBS350-24P-4G",
+      "reference": "REF-SW24",
+      "manufacturer": "Cisco",
+      "unit": "U",
+      "quantity": 5,
+      "remarks": "Pour la gestion des périphériques réseau avec PoE+."
+    },
+    {
+      "pos": "2",
+      "designation": "Onduleur Eaton 9PX 1500 VA",
+      "reference": "9PX 1000/1500/2200/3000 VA",
+      "manufacturer": "Eaton",
+      "unit": "U",
+      "quantity": 3,
+      "remarks": "Protection électrique pour les équipements critiques."
+    }
+  ],
+  "compliance_table": [
+    {
+      "requirement_id": "REQ-001",
+      "requirement_text": "Infrastructure réseau conforme aux normes.",
+      "product_response": "Utilisation de switches Cisco conformes aux standards IEEE.",
+      "status": "CONFORME",
+      "remarks": "Les switches Cisco CBS350-24P-4G respectent les normes IEEE 802.3."
+    },
+    {
+      "requirement_id": "REQ-002",
+      "requirement_text": "Installation complète dans un délai de 2 semaines.",
+      "product_response": "Planification et méthodologie d'exécution en trois phases.",
+      "status": "CONFORME",
+      "remarks": "Le planning d'exécution est conçu pour respecter le délai."
+    },
+    {
+      "requirement_id": "REQ-003",
+      "requirement_text": "Utilisation d'onduleurs pour la protection électrique.",
+      "product_response": "Sélection d'onduleurs Eaton 9PX.",
+      "status": "CONFORME",
+      "remarks": "Les onduleurs Eaton 9PX offrent une protection On-Line Double Conversion."
+    },
+    {
+      "requirement_id": "REQ-004",
+      "requirement_text": "Supervision et gestion réseau via SNMP.",
+      "product_response": "Les switches Cisco supportent SNMP v1/v2c/v3.",
+      "status": "CONFORME",
+      "remarks": "Les fonctionnalités SNMP sont intégrées dans les switches proposés."
+    }
+  ],
+  "date": "15/09/2026",
+  "session_id": "session_87e0100889747be1",
+  "selected_products": [
+    "REF-CAM4MP",
+    "9PX 1000/1500/2200/3000 VA",
+    "REF-UPS15"
+  ],
+  "total_compliance_rate": 0.85
+}
